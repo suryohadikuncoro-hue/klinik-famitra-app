@@ -1,5 +1,6 @@
-# Image untuk Hugging Face Spaces (Docker SDK).
-# Space berjalan sebagai user non-root UID 1000 dan mengekspos SATU port: app_port 7860.
+# Image produksi: kompatibel Render (Web Service, runtime Docker) dan Hugging Face Spaces.
+# - Render menyuntik env PORT (mis. 10000) -> dipakai lewat ${PORT}.
+# - HF Spaces memakai satu port: app_port 7860 dan user non-root UID 1000.
 FROM python:3.14-slim
 
 RUN useradd -m -u 1000 user

@@ -43,7 +43,7 @@ Login awal: **admin / admin123** — wajib diganti lewat menu profil setelah log
 ## Deploy online
 
 Arsitektur: repo **privat** di GitHub, database PostgreSQL di **Supabase**, backend Python
-sebagai container Docker di **Hugging Face Spaces** (gratis, tanpa kartu kredit).
+sebagai container Docker di **Render** (Web Service biasa, bukan Blueprint).
 HTTPS/DNS via Cloudflare bila domain sudah ada.
 
 ### 1. Supabase — siapkan database
@@ -61,34 +61,44 @@ postgresql://postgres.<ref>:<PASSWORD>@aws-0-<region>.pooler.supabase.com:5432/p
 Tidak perlu membuat tabel manual: `init_db()` + seed master data + akun admin berjalan
 otomatis saat aplikasi start pertama kali.
 
-### 2. Hugging Face Spaces — deploy backend
+### 2. Render — New Web Service (Docker)
 
-1. Buat akun di huggingface.co (bisa pakai GitHub/Google — **tanpa kartu kredit**).
-2. **New Space** → nama (mis. `klinik-famitra`) → **SDK: Docker** → template **Blank** →
-   **Hardware: CPU basic (free)** → **Create Space**.
-   Visibilitas **Public** sudah aman (semua data di balik login); pilih **Private** bila
-   ingin URL-nya pun tertutup.
-3. **Settings → Variables and secrets → New secret**: nama `DATABASE_URL`, isi connection
-   string Supabase di atas.
-4. Kirim kode ke repo Space (branch ini sudah punya `README.md` ber-frontmatter
-   `sdk: docker` + `app_port: 7860` dan `Dockerfile` yang mendengarkan port 7860):
+Jangan pakai **New + → Blueprint** (jalur itu meminta kartu kredit). Pakai **Web Service**
+biasa dan pilih runtime **Docker**; Render akan membaca `Dockerfile` di root repo.
 
-```
-git remote add hf https://huggingface.co/spaces/<user>/klinik-famitra
-git push hf master:main
-```
+1. Render Dashboard → **New +** → **Web Service** → hubungkan GitHub → pilih repo
+   `klinik-famitra-app` (repo privat; beri Render akses ke repo itu bila diminta).
+2. Isi form:
+   - **Name**: `klinik-famitra-app` (menentukan URL `klinik-famitra-app.onrender.com`)
+   - **Language / Runtime**: **Docker**
+   - **Region**: **Singapore**
+   - **Branch**: `master`
+   - **Instance Type**: **Free**
+3. **Environment Variables** → tambah satu:
+   - Key: `DATABASE_URL`
+   - Value: connection string Supabase di atas
+4. **Advanced** (opsional tapi disarankan) → **Health Check Path**: `/api/health`
+5. **Deploy Web Service** → tunggu build (Docker build ±3–5 menit) → buka
+   `https://klinik-famitra-app.onrender.com`.
 
-   Saat diminta kredensial: username = nama akun HF, password = **Access Token**
-   (huggingface.co/settings/tokens, role *write*).
-5. Tunggu build selesai (tab **Logs**), lalu buka `https://<user>-klinik-famitra.hf.space`.
+`render.yaml` di repo tetap ada, tapi **tidak dipakai** pada alur Web Service manual ini.
 
-Catatan free tier Space: 2 vCPU / 16 GB RAM, tidur setelah ±48 jam tanpa kunjungan,
-cold start ±30–60 detik. Database tetap di Supabase sehingga restart tidak menghilangkan data.
+Catatan free tier Render: instance tidur setelah ±15 menit tanpa trafik, request pertama
+setelah tidur butuh ±30–60 detik. 750 jam instance/bulan, 512 MB RAM. Data aman karena
+tersimpan di Supabase, bukan di disk Render.
+
+### Alternatif gratis tanpa kartu: Hugging Face Spaces
+
+Bila Render tetap menolak akun tanpa kartu, repo ini juga siap untuk HF Spaces (Docker SDK):
+`README.md` sudah ber-frontmatter `sdk: docker` + `app_port: 7860` dan `Dockerfile`
+mendengarkan `$PORT` (default 7860). Langkahnya: New Space → SDK Docker → CPU basic (free) →
+Settings → Variables and secrets → `DATABASE_URL` → `git push https://<user>:<HF_TOKEN>@huggingface.co/spaces/<user>/<space> master:main`.
+Free tier: 2 vCPU / 16 GB RAM, tidur setelah ±48 jam tanpa kunjungan.
 
 ### 3. Cek kesehatan setelah deploy
 
 ```
-curl https://<user>-<space>.hf.space/api/health
+curl https://<nama-service>.onrender.com/api/health
 # {"ok":true,"db":"aws-0-ap-south-1.pooler.supabase.com:5432/postgres","pool":{...}}
 ```
 
