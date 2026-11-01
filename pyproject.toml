@@ -1,0 +1,20 @@
+[project]
+name = "klinik-famitra-app"
+version = "0.1.0"
+description = "Add your description here"
+authors = [
+    { name = "Suryo Hadi", email = "suryohadikuncoro@gmail.com" }
+]
+requires-python = ">=3.14"
+dependencies = [
+    "fastapi>=0.115",
+    "uvicorn>=0.30",
+    "psycopg[binary]>=3.1",
+]
+
+[project.scripts]
+klinik-famitra-app = "klinik_famitra_app:main"
+
+[build-system]
+requires = ["uv_build>=0.12.18,<0.13.0"]
+build-backend = "uv_build"

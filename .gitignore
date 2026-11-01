@@ -1,0 +1,25 @@
+# Python-generated files
+__pycache__/
+*.py[oc]
+build/
+dist/
+wheels/
+*.egg-info
+
+# Virtual environments
+.venv/
+
+# Database lokal (data klinik — JANGAN pernah di-commit)
+data/
+*.db
+*.sqlite
+*.sqlite3
+
+# Env & secret
+.env
+.env.*
+!.env.example
+
+# Artefak dev
+preview-*.png
+logo Klinik Fa-Mitra.jpeg
