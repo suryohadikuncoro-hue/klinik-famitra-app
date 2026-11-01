@@ -67,11 +67,34 @@ biasanya tidak terasa.
 
 ```
 curl https://<nama-service>.onrender.com/api/health
-# {"ok":true,"db":"aws-0-ap-southeast-1.pooler.supabase.com:5432/postgres"}
+# {"ok":true,"db":"aws-0-ap-south-1.pooler.supabase.com:5432/postgres","pool":{...}}
 ```
 
 `/api/health` dipakai Render sebagai health check: 200 bila app hidup **dan** database
-terjangkau, 503 bila koneksi DB gagal (pesan error ikut dikembalikan).
+terjangkau, 503 bila koneksi DB gagal (pesan error ikut dikembalikan). Isi `pool`
+menunjukkan koneksi yang tersedia/terpakai — kalau `in_use` terus naik dan `available` 0,
+ada kebocoran koneksi.
+
+### Performa & koneksi database
+
+- Aplikasi memakai **connection pool** (`psycopg-pool`, 1–5 koneksi). Tanpa pool, setiap
+  request membayar TCP + TLS + auth ke Supabase (±1,5–2 detik); dengan pool hanya satu
+  round-trip query.
+- `init_db()` mengirim seluruh DDL dalam **satu** pernyataan (satu round-trip, bukan satu
+  per tabel) dan tetap idempotent, jadi tabel baru pada versi berikutnya ikut dibuat.
+- Koneksi yang menganggur >5 menit dibuang dan koneksi mati dicek sebelum dipakai, supaya
+  tidak ada request yang gagal setelah service tidur.
+
+### Uji UI tanpa melihat layar
+
+```
+uv run --with websockets python scripts/ui-check.py http://127.0.0.1:8200
+```
+
+Login lewat API, set token di localStorage, buka dashboard, lalu cetak teks tiap tab
+(Dashboard/Transaksi/Pendaftaran/Pasien) plus laporan error JS. Bisa diarahkan ke URL
+Render setelah deploy.
+
 
 ### Update aplikasi
 
