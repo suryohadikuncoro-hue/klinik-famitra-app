@@ -1,3 +1,13 @@
+---
+title: Klinik Fa-Mitra
+emoji: 🏥
+colorFrom: blue
+colorTo: green
+sdk: docker
+app_port: 7860
+pinned: false
+---
+
 # Klinik Fa-Mitra App
 
 Aplikasi manajemen Klinik Fa-Mitra (klinik pratama + apotek, mitra BPJS Kesehatan).
@@ -30,50 +40,61 @@ uv run uvicorn klinik_famitra_app.main:app --host 0.0.0.0 --port 8000
 
 Login awal: **admin / admin123** — wajib diganti lewat menu profil setelah login pertama.
 
-## Deploy online (GitHub + Supabase + Render)
+## Deploy online
 
 Arsitektur: repo **privat** di GitHub, database PostgreSQL di **Supabase**, backend Python
-di **Render** (Docker, free tier), HTTPS/DNS via Cloudflare bila domain sudah ada.
+sebagai container Docker di **Hugging Face Spaces** (gratis, tanpa kartu kredit).
+HTTPS/DNS via Cloudflare bila domain sudah ada.
 
 ### 1. Supabase — siapkan database
 
-1. Buat project (region **ap-southeast-1** / Singapore supaya dekat).
+1. Buat project (region terdekat, mis. **ap-south-1** atau **ap-southeast-1**).
 2. Salin connection string **Session pooler** dari *Project Settings → Database → Connection string*:
 
 ```
-postgresql://postgres.<ref>:<PASSWORD>@aws-0-ap-southeast-1.pooler.supabase.com:5432/postgres
+postgresql://postgres.<ref>:<PASSWORD>@aws-0-<region>.pooler.supabase.com:5432/postgres
 ```
 
 > Pakai pooler, **bukan** `db.<ref>.supabase.co` — host itu IPv6-only dan tidak terjangkau
-> dari Render free tier. Session pooler (port 5432) dipakai karena app membuka koneksi baru
-> per request tanpa prepared statement server-side.
+> dari banyak hosting.
 
 Tidak perlu membuat tabel manual: `init_db()` + seed master data + akun admin berjalan
 otomatis saat aplikasi start pertama kali.
 
-### 2. Render — deploy backend
+### 2. Hugging Face Spaces — deploy backend
 
-1. Render Dashboard → **New +** → **Blueprint** → hubungkan akun GitHub → pilih repo
-   `klinik-famitra-app` (repo privat, beri Render akses ke repo itu).
-2. Render membaca `render.yaml` dan membuat service `klinik-famitra-app` (Docker, plan free).
-3. Saat diminta, isi env var **`DATABASE_URL`** dengan connection string Supabase di atas.
-4. **Apply** → tunggu build selesai → buka `https://klinik-famitra-app.onrender.com`.
+1. Buat akun di huggingface.co (bisa pakai GitHub/Google — **tanpa kartu kredit**).
+2. **New Space** → nama (mis. `klinik-famitra`) → **SDK: Docker** → template **Blank** →
+   **Hardware: CPU basic (free)** → **Create Space**.
+   Visibilitas **Public** sudah aman (semua data di balik login); pilih **Private** bila
+   ingin URL-nya pun tertutup.
+3. **Settings → Variables and secrets → New secret**: nama `DATABASE_URL`, isi connection
+   string Supabase di atas.
+4. Kirim kode ke repo Space (branch ini sudah punya `README.md` ber-frontmatter
+   `sdk: docker` + `app_port: 7860` dan `Dockerfile` yang mendengarkan port 7860):
 
-Catatan free tier Render: instance tidur setelah ±15 menit tanpa trafik, request pertama
-setelah tidur butuh ±30–60 detik untuk bangun. Untuk klinik yang aktif di jam kerja ini
-biasanya tidak terasa.
+```
+git remote add hf https://huggingface.co/spaces/<user>/klinik-famitra
+git push hf master:main
+```
+
+   Saat diminta kredensial: username = nama akun HF, password = **Access Token**
+   (huggingface.co/settings/tokens, role *write*).
+5. Tunggu build selesai (tab **Logs**), lalu buka `https://<user>-klinik-famitra.hf.space`.
+
+Catatan free tier Space: 2 vCPU / 16 GB RAM, tidur setelah ±48 jam tanpa kunjungan,
+cold start ±30–60 detik. Database tetap di Supabase sehingga restart tidak menghilangkan data.
 
 ### 3. Cek kesehatan setelah deploy
 
 ```
-curl https://<nama-service>.onrender.com/api/health
+curl https://<user>-<space>.hf.space/api/health
 # {"ok":true,"db":"aws-0-ap-south-1.pooler.supabase.com:5432/postgres","pool":{...}}
 ```
 
-`/api/health` dipakai Render sebagai health check: 200 bila app hidup **dan** database
-terjangkau, 503 bila koneksi DB gagal (pesan error ikut dikembalikan). Isi `pool`
-menunjukkan koneksi yang tersedia/terpakai — kalau `in_use` terus naik dan `available` 0,
-ada kebocoran koneksi.
+`/api/health` membalas 200 bila app hidup **dan** database terjangkau, 503 bila koneksi DB
+gagal (pesan error ikut dikembalikan). Isi `pool` menunjukkan koneksi yang tersedia/terpakai —
+kalau `in_use` terus naik dan `available` 0, ada kebocoran koneksi.
 
 ### Performa & koneksi database
 
