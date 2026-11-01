@@ -210,6 +210,7 @@
         <label>Sumber Bayar
           <select id="t-sumber"></select>
         </label>
+        <p class="hint hidden" id="t-bpjs-hint">Sumber BPJS dicatat sebagai <b>piutang BPJS</b>, bukan kas. Uang masuk saat klaim diterima di menu Tagihan.</p>
       </div>
       <div id="keluar-fields" class="hidden">
         <label>Kategori Pengeluaran
@@ -219,7 +220,7 @@
           <select id="t-unit-keluar"></select>
         </label>
       </div>
-      <label>Metode Bayar
+      <label id="t-metode-wrap">Metode Bayar
         <select id="t-metode"></select>
       </label>
       <label>Jumlah (Rp)
@@ -285,18 +286,14 @@
           </div>
 
           <div id="tg-fields-klaim" class="form-fields hidden">
-            <label>Tanggal Ajuan
-              <input type="date" id="k-tanggal" required>
-            </label>
-            <label>Unit Layanan
-              <select id="k-unit"></select>
-            </label>
-            <label>Jumlah (Rp)
-              <input type="number" id="k-jumlah" min="1" step="1" required>
-            </label>
-            <label>Keterangan
-              <input type="text" id="k-ket" placeholder="mis. klaim bulan Oktober">
-            </label>
+            <div class="info-block">
+              <p><b>Klaim BPJS terbentuk otomatis.</b> Setiap pemasukan dengan sumber bayar
+              BPJS Kesehatan yang dicatat di menu <b>Transaksi</b> langsung menjadi piutang
+              dan muncul di daftar klaim ini.</p>
+              <p>Piutang belum menambah kas. Setelah dana dari BPJS benar-benar diterima,
+              tekan <b>Terima Dana</b> pada klaim yang sesuai — sistem mencatat uang masuk
+              ke kas/rekening dan mengurangi piutang dalam satu langkah.</p>
+            </div>
           </div>
 
           <button type="submit" class="btn-primary" id="tg-submit">Simpan Tagihan</button>

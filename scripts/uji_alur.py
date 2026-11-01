@@ -116,12 +116,18 @@ def main():
         }, expect=400)
         print("  overpay ditolak (400) — benar")
 
-        print("== klaim BPJS ==")
-        kl = call("POST", "/api/klaim", {
-            "tanggal_ajuan": "2026-11-01", "unit_layanan_id": unit["Rawat Jalan"],
+        print("== klaim BPJS (otomatis dari pemasukan bersumber BPJS) ==")
+        kl = call("POST", "/api/transaksi", {
+            "tanggal": "2026-11-01", "jenis": "masuk",
+            "unit_layanan_id": unit["Rawat Jalan"], "sumber_bayar_id": sumber["BPJS Kesehatan"],
             "jumlah": 500000, "keterangan": "UJI ALUR (hapus)",
         })
-        klid = kl["id"]; created["klaim"].append(klid)
+        assert kl.get("pencatatan") == "piutang_bpjs", f"pemasukan BPJS bukan piutang: {kl}"
+        klid = kl["klaim_id"]; created["klaim"].append(klid)
+        daftar = call("GET", "/api/klaim")
+        assert any(k["id"] == klid and k["status"] == "diajukan" for k in daftar), \
+            "klaim tidak terbentuk otomatis dari pemasukan BPJS"
+        print(f"  pemasukan BPJS -> klaim #{klid} status diajukan (piutang, bukan kas)")
 
         print("== laporan & neraca ==")
         lap = call("GET", "/api/laporan?dari=2026-11-01&sampai=2026-11-01")

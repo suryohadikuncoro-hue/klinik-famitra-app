@@ -55,9 +55,9 @@ async function loadMaster() {
   fillSelect('t-kategori', MASTER.kategori_keluar);
   fillSelect('t-unit-keluar', MASTER.unit_layanan, '— (beban bersama)');
   fillSelect('t-metode', MASTER.metode_bayar);
-  fillSelect('k-unit', MASTER.unit_layanan);
   fillSelect('tg-unit', MASTER.unit_layanan, '—');
   fillSelect('tg-sumber', MASTER.sumber_bayar);
+  syncBpjsMode();
   renderMaster();
 }
 
@@ -144,9 +144,10 @@ function setTagihanMode(mode) {
   $('tg-mode').value = mode;
   $('tg-fields-pasien').classList.toggle('hidden', mode !== 'pasien');
   $('tg-fields-klaim').classList.toggle('hidden', mode !== 'klaim');
-  $('tg-submit').textContent = mode === 'klaim' ? 'Tambah Klaim' : 'Simpan Tagihan';
-  $('tg-list-title').textContent = mode === 'klaim' ? 'Daftar Klaim' : 'Daftar Tagihan';
-  $('tg-list-hint').textContent = mode === 'klaim' ? 'diajukan → cair' : 'terbaru di atas';
+  $('tg-submit').textContent = 'Simpan Tagihan';
+  $('tg-submit').classList.toggle('hidden', mode === 'klaim');
+  $('tg-list-title').textContent = mode === 'klaim' ? 'Daftar Klaim BPJS' : 'Daftar Tagihan';
+  $('tg-list-hint').textContent = mode === 'klaim' ? 'piutang → dana diterima' : 'terbaru di atas';
   $('tg-filter-wrap').classList.toggle('hidden', mode === 'klaim');
   $('tagihan-list').classList.toggle('hidden', mode === 'klaim');
   $('klaim-list').classList.toggle('hidden', mode !== 'klaim');
@@ -207,7 +208,8 @@ async function renderDashboard() {
   $('bar-bank').style.width = (dana > 0 ? Math.max(0, Math.min(100, (d.saldo_bank / dana) * 100)) : 0) + '%';
   const pendapatan = d.pendapatan_akrual != null
     ? d.pendapatan_akrual
-    : (d.masuk || 0) + (d.piutang_bpjs_periode || 0) + (d.piutang_pasien_periode || 0);
+    // cadangan bila server lama: kas non-BPJS + klaim BPJS periode + piutang pasien
+    : (d.masuk || 0) - (d.masuk_klaim_bpjs || 0) + (d.bpjs_periode || d.piutang_bpjs_periode || 0) + (d.piutang_pasien_periode || 0);
   $('chip-margin').textContent = 'margin ' + (pendapatan > 0 ? Math.round((d.laba_akrual / pendapatan) * 100) : 0) + '%';
   $('chip-realisasi').textContent = 'kas ' + (pendapatan > 0 ? Math.round((d.masuk / pendapatan) * 100) : 100) + '%';
 
@@ -367,6 +369,24 @@ function drawDonut(el, legendEl, items, total) {
 }
 
 // ---------- transaksi ----------
+// Sumber bayar BPJS = piutang: metode bayar belum berlaku (uangnya belum masuk),
+// jadi field metode disembunyikan dan tidak ikut dikirim.
+function isBpjsSumber() {
+  const el = $('t-sumber');
+  if (!el || !el.value) return false;
+  const item = MASTER.sumber_bayar.find((s) => String(s.id) === String(el.value));
+  return !!(item && item.is_bpjs);
+}
+
+function syncBpjsMode() {
+  const bpjs = $('t-jenis').value === 'masuk' && isBpjsSumber();
+  $('t-bpjs-hint').classList.toggle('hidden', !bpjs);
+  $('t-metode-wrap').classList.toggle('hidden', bpjs);
+  $('t-metode').disabled = bpjs;
+}
+
+$('t-sumber').addEventListener('change', syncBpjsMode);
+
 document.querySelectorAll('#form-transaksi .seg button').forEach((btn) => {
   btn.addEventListener('click', () => {
     document.querySelectorAll('#form-transaksi .seg button').forEach((b) => b.classList.remove('active'));
@@ -375,20 +395,22 @@ document.querySelectorAll('#form-transaksi .seg button').forEach((btn) => {
     $('t-jenis').value = j;
     $('masuk-fields').classList.toggle('hidden', j !== 'masuk');
     $('keluar-fields').classList.toggle('hidden', j !== 'keluar');
+    syncBpjsMode();
   });
 });
 
 $('form-transaksi').addEventListener('submit', async (e) => {
   e.preventDefault();
   const jenis = $('t-jenis').value;
+  const bpjs = jenis === 'masuk' && isBpjsSumber();
   const body = {
     tanggal: $('t-tanggal').value,
     jenis,
-    metode_bayar_id: parseInt($('t-metode').value, 10),
     jumlah: parseInt($('t-jumlah').value, 10),
     keterangan: $('t-ket').value,
     dicatat_oleh: $('t-oleh').value,
   };
+  if (!bpjs) body.metode_bayar_id = parseInt($('t-metode').value, 10);
   if (jenis === 'masuk') {
     body.unit_layanan_id = parseInt($('t-unit').value, 10);
     body.sumber_bayar_id = parseInt($('t-sumber').value, 10);
@@ -397,8 +419,9 @@ $('form-transaksi').addEventListener('submit', async (e) => {
     const u = $('t-unit-keluar').value;
     body.unit_layanan_id = u ? parseInt(u, 10) : null;
   }
+  let res;
   try {
-    await postJSON('/api/transaksi', body);
+    res = await postJSON('/api/transaksi', body);
   } catch (err) { alert(err.message); return; }
   $('form-transaksi').reset();
   $('t-jenis').value = 'masuk';
@@ -406,7 +429,11 @@ $('form-transaksi').addEventListener('submit', async (e) => {
   document.querySelectorAll('#form-transaksi .seg button').forEach((b) => b.classList.toggle('active', b.dataset.jenis === 'masuk'));
   $('masuk-fields').classList.remove('hidden');
   $('keluar-fields').classList.add('hidden');
+  syncBpjsMode();
   renderTransaksi();
+  if (res && res.pencatatan === 'piutang_bpjs') {
+    alert('Tercatat sebagai piutang BPJS (bukan kas).\nBuka menu Tagihan → Klaim BPJS saat dana dari BPJS sudah diterima.');
+  }
 });
 
 async function renderTransaksi() {
@@ -440,21 +467,8 @@ async function renderTransaksi() {
 // ---------- tagihan ----------
 $('form-tagihan').addEventListener('submit', async (e) => {
   e.preventDefault();
-
-  if (tgMode === 'klaim') {
-    try {
-      await postJSON('/api/klaim', {
-        tanggal_ajuan: $('k-tanggal').value,
-        unit_layanan_id: parseInt($('k-unit').value, 10),
-        jumlah: parseInt($('k-jumlah').value, 10),
-        keterangan: $('k-ket').value,
-      });
-    } catch (err) { alert(err.message); return; }
-    $('k-jumlah').value = '';
-    $('k-ket').value = '';
-    renderKlaim();
-    return;
-  }
+  // Mode klaim tidak punya form: klaim terbentuk dari menu Transaksi.
+  if (tgMode === 'klaim') return;
 
   const body = {
     tanggal: $('tg-tanggal').value,
@@ -540,38 +554,69 @@ async function renderTagihan() {
   });
 }
 
-// ---------- klaim BPJS (submit ditangani form tagihan di atas) ----------
+// ---------- klaim BPJS ----------
+// Klaim tidak diinput manual: terbentuk dari pemasukan bersumber BPJS.
+// User hanya menekan "Terima Dana" saat uang dari BPJS benar-benar masuk.
 
 async function renderKlaim() {
   const rows = await api('/api/klaim');
   $('klaim-list').innerHTML = rows.map((k) => {
-    const badge = k.status === 'cair'
-      ? '<span class="badge cair">cair</span>'
-      : '<span class="badge diajukan">diajukan</span>';
+    const cair = k.status === 'cair';
+    const badge = cair
+      ? '<span class="badge cair">dana diterima</span>'
+      : '<span class="badge diajukan">piutang</span>';
     const ket = k.keterangan ? '<div class="li-sub">' + esc(k.keterangan) + '</div>' : '';
-    const cairBtn = k.status === 'diajukan'
-      ? '<button class="btn-mini cair" data-cair="' + k.id + '">Cairkan</button>'
-      : '';
-    return '<li><div class="li-main">' +
-      '<div class="li-title">' + esc(k.unit || 'Unit') + '</div>' +
-      '<div class="li-sub">' + k.tanggal_ajuan + (k.tanggal_cair ? ' → cair ' + k.tanggal_cair : '') + '</div>' + ket + '</div>' +
+    const meta = [k.tanggal_ajuan + (k.tanggal_cair ? ' → dana diterima ' + k.tanggal_cair : ''),
+      k.dicatat_oleh ? 'oleh ' + k.dicatat_oleh : ''].filter(Boolean).join(' · ');
+    const payForm = cair ? '' :
+      '<div class="pay-form hidden">' +
+        '<div class="pay-row">' +
+          '<input type="date" class="pay-tgl" value="' + todayStr + '">' +
+          '<select class="pay-metode">' + metodeOptions() + '</select>' +
+        '</div>' +
+        '<div class="pay-row">' +
+          '<button class="btn-mini" data-terima="' + k.id + '">Konfirmasi terima dana</button>' +
+        '</div>' +
+        '<div class="li-sub">Uang masuk dicatat ke kas/rekening sesuai metode di atas, piutang berkurang.</div>' +
+      '</div>';
+    return '<li class="' + (cair ? 'lunas' : '') + '" data-id="' + k.id + '"><div class="li-main">' +
+      '<div class="li-title">' + esc(k.unit || 'Unit') + (k.sumber ? ' · ' + esc(k.sumber) : '') + '</div>' +
+      '<div class="li-sub">' + esc(meta) + '</div>' + ket + '</div>' +
       badge +
       '<span class="li-amount">' + rupiah(k.jumlah) + '</span>' +
-      cairBtn +
-      '<button class="btn-mini hapus" data-delk="' + k.id + '">Hapus</button></li>';
-  }).join('') || '<li class="rekap-row empty">Belum ada klaim</li>';
+      (cair ? '' : '<button class="btn-mini cair" data-bukat="' + k.id + '">Terima Dana</button>') +
+      (cair ? '' : '<button class="btn-mini hapus" data-delk="' + k.id + '">Hapus</button>') +
+      payForm + '</li>';
+  }).join('') || '<li class="rekap-row empty">Belum ada klaim. Catat pemasukan bersumber BPJS di menu Transaksi.</li>';
 
-  document.querySelectorAll('#klaim-list [data-cair]').forEach((b) => {
+  document.querySelectorAll('#klaim-list [data-bukat]').forEach((b) => {
+    b.addEventListener('click', () => {
+      const pf = b.closest('li').querySelector('.pay-form');
+      if (pf) pf.classList.toggle('hidden');
+    });
+  });
+  document.querySelectorAll('#klaim-list [data-terima]').forEach((b) => {
     b.addEventListener('click', async () => {
+      const li = b.closest('li');
+      const body = {
+        tanggal_cair: li.querySelector('.pay-tgl').value,
+        metode_bayar_id: parseInt(li.querySelector('.pay-metode').value, 10),
+      };
+      if (!body.tanggal_cair) { alert('Tanggal terima dana wajib diisi'); return; }
+      b.disabled = true;
       try {
-        await postJSON('/api/klaim/' + b.dataset.cair + '/cair', { tanggal_cair: todayStr });
-      } catch (err) { alert(err.message); return; }
+        await postJSON('/api/klaim/' + b.dataset.terima + '/cair', body);
+      } catch (err) {
+        b.disabled = false;
+        alert(err.message);
+        return;
+      }
       renderKlaim();
     });
   });
   document.querySelectorAll('#klaim-list [data-delk]').forEach((b) => {
     b.addEventListener('click', async () => {
-      if (!confirm('Hapus klaim ini?')) return;
+      if (!confirm('Hapus piutang klaim ini? (belum ada dana diterima)')) return;
       try { await api('/api/klaim/' + b.dataset.delk, { method: 'DELETE' }); } catch (e) { alert(e.message); }
       renderKlaim();
     });
@@ -1100,7 +1145,6 @@ $('dash-sampai').value = todayStr;
 $('tr-dari').value = monthStart;
 $('tr-sampai').value = todayStr;
 $('t-tanggal').value = todayStr;
-$('k-tanggal').value = todayStr;
 $('tg-tanggal').value = todayStr;
 $('m-tanggal').value = todayStr;
 $('lu-dari').value = monthStart;

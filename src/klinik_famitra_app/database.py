@@ -166,6 +166,16 @@ SCHEMA = [
     "CREATE INDEX IF NOT EXISTS idx_modal_tanggal ON modal (tanggal)",
     "CREATE INDEX IF NOT EXISTS idx_transaksi_tagihan ON transaksi (tagihan_id)",
     "CREATE INDEX IF NOT EXISTS idx_transaksi_metode ON transaksi (metode_bayar_id)",
+    # --- Migrasi aditif: pemasukan BPJS = piutang, bukan kas (idempotent) ---
+    # `sumber_bayar.is_bpjs` menandai penanggung mana yang berarti piutang.
+    # Flag menempel pada ID, jadi tetap benar walau namanya diubah user.
+    "ALTER TABLE sumber_bayar ADD COLUMN IF NOT EXISTS is_bpjs BOOLEAN NOT NULL DEFAULT FALSE",
+    # Klaim menyimpan sumber bayar + siapa yang mencatat + transaksi penerimaan dana.
+    "ALTER TABLE klaim_bpjs ADD COLUMN IF NOT EXISTS sumber_bayar_id INTEGER REFERENCES sumber_bayar(id)",
+    "ALTER TABLE klaim_bpjs ADD COLUMN IF NOT EXISTS dicatat_oleh TEXT",
+    # UNIQUE: satu klaim hanya boleh punya satu transaksi penerimaan (anti dobel).
+    "ALTER TABLE klaim_bpjs ADD COLUMN IF NOT EXISTS transaksi_id INTEGER UNIQUE REFERENCES transaksi(id)",
+    "CREATE INDEX IF NOT EXISTS idx_klaim_status ON klaim_bpjs (status, tanggal_ajuan)",
 ]
 
 

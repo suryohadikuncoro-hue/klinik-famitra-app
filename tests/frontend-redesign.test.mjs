@@ -9,7 +9,14 @@ test('brand dashboard provides an accessible seven-view rail and asymmetric clin
   const html = file('index.html');
   const original = execFileSync('git', ['show', 'HEAD:src/klinik_famitra_app/static/index.html'], { cwd: root, encoding: 'utf8' });
   const ids = [...html.matchAll(/\bid="([^"]+)"/g)].map(m => m[1]);
-  for (const match of original.matchAll(/\bid="([^"]+)"/g)) assert.ok(ids.includes(match[1]), 'preserve ' + match[1]);
+  // Input klaim manual sengaja DIHAPUS: klaim BPJS kini terbentuk otomatis dari
+  // pemasukan bersumber BPJS, jadi tidak ada lagi form klaim untuk diisi.
+  const removed = new Set(['k-tanggal', 'k-unit', 'k-jumlah', 'k-ket']);
+  for (const match of original.matchAll(/\bid="([^"]+)"/g)) {
+    if (removed.has(match[1])) continue;
+    assert.ok(ids.includes(match[1]), 'preserve ' + match[1]);
+  }
+  for (const id of removed) assert.ok(!ids.includes(id), 'manual claim input removed: ' + id);
   assert.equal(new Set(ids).size, ids.length, 'IDs must remain unique');
   assert.match(html, /class="dashboard-workspace"/);
   assert.match(html, /class="[^"\n]*account-summary/);
@@ -152,4 +159,45 @@ test('charts use distinct data colors while navigation exposes its current page'
     assert.ok(el.innerHTML.includes('stroke="' + color + '"'), color);
     assert.ok(legend.innerHTML.includes('background:' + color), 'matching legend ' + color);
   }
+});
+
+
+test('BPJS source is treated as a receivable: no method field, no manual claim form', () => {
+  const html = file('index.html');
+  assert.match(html, /id="t-bpjs-hint"/, 'form transaksi menjelaskan BPJS = piutang');
+  assert.match(html, /id="t-metode-wrap"/, 'metode bayar bisa disembunyikan untuk BPJS');
+  const klaimBlock = html.match(/<div id="tg-fields-klaim"[\s\S]*?<\/div>\s*<\/div>/)[0];
+  assert.doesNotMatch(klaimBlock, /<input|<select/, 'klaim tidak punya input manual');
+
+  const source = file('app.js');
+  assert.match(source, /if \(!bpjs\) body\.metode_bayar_id/, 'metode tidak dikirim untuk BPJS');
+  assert.match(source, /res\.pencatatan === 'piutang_bpjs'/, 'user diberi tahu hasilnya piutang');
+
+  const els = {};
+  const get = id => {
+    if (!els[id]) els[id] = { value: '', disabled: false, classList: { toggle(cls, on) { this[cls] = on; } } };
+    return els[id];
+  };
+  const context = vm.createContext({ $: get });
+  vm.runInContext(
+    source.slice(source.indexOf('function isBpjsSumber('), source.indexOf("$('t-sumber').addEventListener")),
+    context,
+  );
+  context.MASTER = { sumber_bayar: [
+    { id: 1, nama: 'Tunai / Umum', is_bpjs: false },
+    { id: 2, nama: 'BPJS Kesehatan', is_bpjs: true },
+  ] };
+  get('t-jenis').value = 'masuk';
+
+  get('t-sumber').value = '2';
+  context.syncBpjsMode();
+  assert.equal(get('t-metode-wrap').classList.hidden, true, 'metode disembunyikan untuk BPJS');
+  assert.equal(get('t-metode').disabled, true, 'select tersembunyi ikut di-disable');
+  assert.equal(get('t-bpjs-hint').classList.hidden, false, 'hint piutang tampil');
+
+  get('t-sumber').value = '1';
+  context.syncBpjsMode();
+  assert.equal(get('t-metode-wrap').classList.hidden, false);
+  assert.equal(get('t-metode').disabled, false);
+  assert.equal(get('t-bpjs-hint').classList.hidden, true);
 });

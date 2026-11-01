@@ -55,6 +55,14 @@ def seed():
                 "INSERT INTO metode_bayar (nama, jenis_dana, urutan) VALUES (%s,%s,%s)",
                 (nama, jenis, urut),
             )
+
+    # Tandai sumber bayar BPJS SEKALI saja: bila belum ada baris bertanda, cari
+    # berdasarkan nama. Setelah ditandai, flag menempel pada ID sehingga tetap
+    # benar walaupun user mengganti namanya ("BPJS Kesehatan" -> "BPJS").
+    marked = conn.execute("SELECT COUNT(*) AS count FROM sumber_bayar WHERE is_bpjs").fetchone()["count"]
+    if marked == 0:
+        conn.execute("UPDATE sumber_bayar SET is_bpjs=TRUE WHERE nama ILIKE '%%bpjs%%'")
+
     conn.commit()
     conn.close()
 

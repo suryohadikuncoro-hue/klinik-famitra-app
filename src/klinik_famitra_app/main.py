@@ -205,6 +205,21 @@ def _sisa_tagihan(conn, tid: int) -> Optional[int]:
     return tg["total"] - paid
 
 
+def _is_bpjs_sumber(conn, sid: Optional[int]) -> bool:
+    """True bila sumber bayar ini adalah penanggung BPJS (berarti piutang)."""
+    if not sid:
+        return False
+    row = conn.execute("SELECT is_bpjs FROM sumber_bayar WHERE id=%s", (sid,)).fetchone()
+    return bool(row and row["is_bpjs"])
+
+
+def _sumber_bpjs_id(conn) -> Optional[int]:
+    row = conn.execute(
+        "SELECT id FROM sumber_bayar WHERE is_bpjs ORDER BY id LIMIT 1"
+    ).fetchone()
+    return row["id"] if row else None
+
+
 # ---------------- Master ----------------
 @app.get("/api/master")
 def get_master():
@@ -382,9 +397,32 @@ def create_transaksi(t: TransaksiIn):
         raise HTTPException(400, "pemasukan wajib isi unit layanan & sumber bayar")
     if t.jenis == "keluar" and not t.kategori_keluar_id:
         raise HTTPException(400, "pengeluaran wajib isi kategori")
-    if not t.metode_bayar_id:
-        raise HTTPException(400, "metode bayar wajib dipilih (tunai/transfer/QRIS)")
     conn = db.get_conn()
+
+    # Pemasukan bersumber BPJS = PIUTANG, bukan kas. Yang dibuat adalah baris
+    # klaim_bpjs berstatus 'diajukan'; uang baru masuk ke kas/rekening saat
+    # klaim diterima (POST /api/klaim/{id}/cair). Tidak perlu input manual.
+    if t.jenis == "masuk" and _is_bpjs_sumber(conn, t.sumber_bayar_id):
+        if t.tagihan_id:
+            conn.close()
+            raise HTTPException(
+                400,
+                "pemasukan BPJS tidak dipakai membayar tagihan pasien — catat lewat Transaksi, "
+                "sistem membuat klaim BPJS otomatis",
+            )
+        cur = conn.execute(
+            "INSERT INTO klaim_bpjs (tanggal_ajuan, unit_layanan_id, jumlah, keterangan, sumber_bayar_id, dicatat_oleh) "
+            "VALUES (%s,%s,%s,%s,%s,%s) RETURNING id",
+            (t.tanggal, t.unit_layanan_id, t.jumlah, t.keterangan, t.sumber_bayar_id, t.dicatat_oleh),
+        )
+        klaim_id = cur.fetchone()["id"]
+        conn.commit()
+        conn.close()
+        return {"ok": True, "id": klaim_id, "klaim_id": klaim_id, "pencatatan": "piutang_bpjs"}
+
+    if not t.metode_bayar_id:
+        conn.close()
+        raise HTTPException(400, "metode bayar wajib dipilih (tunai/transfer/QRIS)")
     if not _metode_valid(conn, t.metode_bayar_id):
         conn.close()
         raise HTTPException(400, "metode bayar tidak valid")
@@ -413,6 +451,16 @@ def create_transaksi(t: TransaksiIn):
 @app.delete("/api/transaksi/{tid}")
 def delete_transaksi(tid: int):
     conn = db.get_conn()
+    linked = conn.execute(
+        "SELECT id FROM klaim_bpjs WHERE transaksi_id=%s", (tid,)
+    ).fetchone()
+    if linked:
+        conn.close()
+        raise HTTPException(
+            400,
+            "transaksi ini adalah penerimaan klaim BPJS — batalkan dari menu Klaim BPJS, "
+            "bukan dihapus langsung",
+        )
     cur = conn.execute("DELETE FROM transaksi WHERE id=%s", (tid,))
     conn.commit()
     conn.close()
@@ -458,6 +506,16 @@ def create_tagihan(t: TagihanIn):
     if t.total <= 0:
         raise HTTPException(400, "total tagihan harus > 0")
     conn = db.get_conn()
+    # Tagihan pasien BPJS tidak dibuat di sini: pemasukan bersumber BPJS dicatat
+    # lewat menu Transaksi dan otomatis menjadi klaim BPJS (piutang), supaya
+    # tidak ada dua jalur piutang yang bisa dihitung ganda.
+    if _is_bpjs_sumber(conn, t.sumber_bayar_id):
+        conn.close()
+        raise HTTPException(
+            400,
+            "untuk pasien BPJS, catat di menu Transaksi (Pemasukan, sumber BPJS Kesehatan) — "
+            "sistem otomatis membentuk klaim BPJS",
+        )
     cur = conn.execute(
         "INSERT INTO tagihan (tanggal, nama_pasien, unit_layanan_id, sumber_bayar_id, total, keterangan) VALUES (%s,%s,%s,%s,%s,%s) RETURNING id",
         (t.tanggal, t.nama_pasien, t.unit_layanan_id, t.sumber_bayar_id, t.total, t.keterangan),
@@ -518,9 +576,17 @@ def bayar_tagihan(tid: int, b: BayarIn):
 
 
 # ---------------- Klaim BPJS ----------------
+# Klaim TIDAK diinput manual: terbentuk otomatis dari pemasukan bersumber BPJS
+# (lihat create_transaksi). Yang dilakukan user hanya "terima dana" (cair).
 @app.get("/api/klaim")
 def list_klaim(status: Optional[str] = None):
-    q = "SELECT k.*, u.nama AS unit FROM klaim_bpjs k LEFT JOIN unit_layanan u ON k.unit_layanan_id=u.id WHERE 1=1"
+    q = (
+        "SELECT k.*, u.nama AS unit, s.nama AS sumber "
+        "FROM klaim_bpjs k "
+        "LEFT JOIN unit_layanan u ON k.unit_layanan_id=u.id "
+        "LEFT JOIN sumber_bayar s ON k.sumber_bayar_id=s.id "
+        "WHERE 1=1"
+    )
     args = []
     if status:
         q += " AND k.status = %s"; args.append(status)
@@ -533,42 +599,85 @@ def list_klaim(status: Optional[str] = None):
 
 @app.post("/api/klaim")
 def create_klaim(k: KlaimIn):
-    if k.jumlah <= 0:
-        raise HTTPException(400, "jumlah harus > 0")
-    conn = db.get_conn()
-    cur = conn.execute(
-        "INSERT INTO klaim_bpjs (tanggal_ajuan, unit_layanan_id, jumlah, keterangan) VALUES (%s,%s,%s,%s) RETURNING id",
-        (k.tanggal_ajuan, k.unit_layanan_id, k.jumlah, k.keterangan),
+    raise HTTPException(
+        400,
+        "Klaim BPJS tidak diinput manual. Catat pemasukan dengan sumber bayar BPJS "
+        "di menu Transaksi — sistem otomatis membentuk klaim (piutang).",
     )
-    new_id = cur.fetchone()["id"]
-    conn.commit()
-    conn.close()
-    return {"id": new_id, "ok": True}
 
 
 @app.post("/api/klaim/{kid}/cair")
 def cairkan_klaim(kid: int, body: dict):
-    tanggal_cair = body.get("tanggal_cair")
+    """Terima dana klaim: piutang berkurang, kas/rekening bertambah — satu langkah.
+
+    Atomik: baris klaim dikunci FOR UPDATE lalu pemasukan dibuat dan status
+    diubah dalam satu transaksi, jadi klik ganda tidak menghasilkan dua
+    pemasukan (klaim juga punya UNIQUE transaksi_id sebagai jaring pengaman).
+    """
+    tanggal_cair = (body or {}).get("tanggal_cair") or (body or {}).get("tanggal")
+    metode_id = (body or {}).get("metode_bayar_id")
+    if not tanggal_cair:
+        raise HTTPException(400, "tanggal terima dana wajib diisi")
+    if not metode_id:
+        raise HTTPException(400, "metode bayar wajib dipilih (tunai/transfer/QRIS)")
+
     conn = db.get_conn()
-    cur = conn.execute(
-        "UPDATE klaim_bpjs SET status='cair', tanggal_cair=%s WHERE id=%s AND status='diajukan'",
-        (tanggal_cair, kid),
-    )
-    conn.commit()
-    conn.close()
-    if cur.rowcount == 0:
-        raise HTTPException(404, "klaim tidak ditemukan atau sudah cair")
-    return {"ok": True}
+    try:
+        with conn.transaction():
+            k = conn.execute(
+                "SELECT * FROM klaim_bpjs WHERE id=%s FOR UPDATE", (kid,)
+            ).fetchone()
+            if k is None:
+                raise HTTPException(404, "klaim tidak ditemukan")
+            if k["status"] == "cair":
+                # idempotent: jangan buat pemasukan kedua
+                return {"ok": True, "sudah_cair": True, "transaksi_id": k["transaksi_id"]}
+            if tanggal_cair < k["tanggal_ajuan"]:
+                raise HTTPException(
+                    400, "tanggal terima dana tidak boleh sebelum tanggal pengakuan piutang"
+                )
+            if not _metode_valid(conn, int(metode_id)):
+                raise HTTPException(400, "metode bayar tidak valid")
+            sumber_id = k["sumber_bayar_id"] or _sumber_bpjs_id(conn)
+            cur = conn.execute(
+                "INSERT INTO transaksi (tanggal, jenis, unit_layanan_id, sumber_bayar_id, "
+                "metode_bayar_id, jumlah, keterangan, dicatat_oleh) "
+                "VALUES (%s,'masuk',%s,%s,%s,%s,%s,%s) RETURNING id",
+                (
+                    tanggal_cair, k["unit_layanan_id"], sumber_id, int(metode_id), k["jumlah"],
+                    "Penerimaan klaim BPJS" + (f" — {k['keterangan']}" if k["keterangan"] else ""),
+                    k["dicatat_oleh"],
+                ),
+            )
+            trx_id = cur.fetchone()["id"]
+            conn.execute(
+                "UPDATE klaim_bpjs SET status='cair', tanggal_cair=%s, transaksi_id=%s WHERE id=%s",
+                (tanggal_cair, trx_id, kid),
+            )
+    finally:
+        conn.close()
+    return {"ok": True, "transaksi_id": trx_id, "tanggal_cair": tanggal_cair}
 
 
 @app.delete("/api/klaim/{kid}")
 def delete_klaim(kid: int):
     conn = db.get_conn()
-    cur = conn.execute("DELETE FROM klaim_bpjs WHERE id=%s", (kid,))
+    row = conn.execute(
+        "SELECT transaksi_id FROM klaim_bpjs WHERE id=%s", (kid,)
+    ).fetchone()
+    if row is None:
+        conn.close()
+        raise HTTPException(404, "klaim tidak ditemukan")
+    if row["transaksi_id"]:
+        conn.close()
+        raise HTTPException(
+            400,
+            "klaim sudah diterima dananya — hapus transaksi penerimaan dulu "
+            "agar kas tidak berubah tanpa jejak",
+        )
+    conn.execute("DELETE FROM klaim_bpjs WHERE id=%s", (kid,))
     conn.commit()
     conn.close()
-    if cur.rowcount == 0:
-        raise HTTPException(404, "klaim tidak ditemukan")
     return {"ok": True}
 
 
@@ -596,8 +705,10 @@ def laporan(dari: Optional[str] = None, sampai: Optional[str] = None):
         "SELECT COALESCE(SUM(jumlah),0) AS v FROM klaim_bpjs WHERE status='diajukan'"
     ).fetchone()["v"]
 
-    # Piutang yang DIAKUI pada periode terpilih (dasar laba akrual).
-    # Kartu piutang di dashboard tetap memakai saldo outstanding di atas.
+    # Klaim BPJS yang DIAKUI pada periode terpilih (dasar laba akrual).
+    # Status ikut dihitung: klaim yang sudah cair tetap pendapatan periode
+    # pengakuannya, bukan periode uangnya masuk. Kartu piutang di dashboard
+    # tetap memakai saldo outstanding di atas.
     pcond, pargs = [], []
     if dari:
         pcond.append("tanggal_ajuan >= %s"); pargs.append(dari)
@@ -605,7 +716,14 @@ def laporan(dari: Optional[str] = None, sampai: Optional[str] = None):
         pcond.append("tanggal_ajuan <= %s"); pargs.append(sampai)
     pw = (" AND " + " AND ".join(pcond)) if pcond else ""
     piutang_periode = conn.execute(
-        f"SELECT COALESCE(SUM(jumlah),0) AS v FROM klaim_bpjs WHERE status='diajukan'{pw}", pargs
+        f"SELECT COALESCE(SUM(jumlah),0) AS v FROM klaim_bpjs WHERE 1=1{pw}", pargs
+    ).fetchone()["v"]
+
+    # Kas yang berasal dari penerimaan klaim BPJS (bukan pendapatan baru).
+    masuk_klaim = conn.execute(
+        "SELECT COALESCE(SUM(t.jumlah),0) AS v FROM transaksi t "
+        f"WHERE t.id IN (SELECT transaksi_id FROM klaim_bpjs WHERE transaksi_id IS NOT NULL){where}",
+        args,
     ).fetchone()["v"]
 
     # Saldo kas & rekening = SALDO berjalan (bukan mutasi periode):
@@ -657,7 +775,10 @@ def laporan(dari: Optional[str] = None, sampai: Optional[str] = None):
     conn.close()
 
     laba_kas = masuk - keluar
-    pendapatan_akrual = masuk + piutang_periode + piutang_pasien_periode
+    # Pendapatan akrual = kas non-BPJS + SEMUA klaim BPJS yang diakui pada
+    # periode ini + sisa tagihan pasien. Kas dari penerimaan klaim dikeluarkan
+    # dari komponen kas agar satu pendapatan BPJS tidak dihitung dua kali.
+    pendapatan_akrual = (masuk - masuk_klaim) + piutang_periode + piutang_pasien_periode
     laba_akrual = pendapatan_akrual - keluar
 
     return {
@@ -669,6 +790,8 @@ def laporan(dari: Optional[str] = None, sampai: Optional[str] = None):
         "modal_total": modal_total,
         "piutang_bpjs": piutang,
         "piutang_pasien": piutang_pasien,
+        "masuk_klaim_bpjs": masuk_klaim,
+        "bpjs_periode": piutang_periode,
         "piutang_bpjs_periode": piutang_periode,
         "piutang_pasien_periode": piutang_pasien_periode,
         "pendapatan_akrual": pendapatan_akrual,
@@ -736,16 +859,22 @@ def laporan_unit(dari: Optional[str] = None, sampai: Optional[str] = None):
     units = [dict(r) for r in conn.execute("SELECT id, nama FROM unit_layanan ORDER BY id")]
 
     w, a = period("t")
+    # Kas per unit TANPA penerimaan klaim BPJS: uang itu konversi piutang yang
+    # sudah diakui sebagai pendapatan BPJS di bawah, bukan pendapatan baru.
     kas = {r["uid"]: r["total"] for r in conn.execute(
         "SELECT t.unit_layanan_id AS uid, COALESCE(SUM(t.jumlah),0) AS total "
-        f"FROM transaksi t WHERE t.jenis='masuk'{w} GROUP BY t.unit_layanan_id", a)}
+        "FROM transaksi t WHERE t.jenis='masuk' "
+        "AND t.id NOT IN (SELECT transaksi_id FROM klaim_bpjs WHERE transaksi_id IS NOT NULL)"
+        f"{w} GROUP BY t.unit_layanan_id", a)}
 
     w, a = period("t")
     beban = {r["uid"]: r["total"] for r in conn.execute(
         "SELECT t.unit_layanan_id AS uid, COALESCE(SUM(t.jumlah),0) AS total "
         f"FROM transaksi t WHERE t.jenis='keluar'{w} GROUP BY t.unit_layanan_id", a)}
 
-    c = ["status='diajukan'"]
+    # Klaim BPJS diakui pada tanggal pengakuan (tanggal_ajuan), status apa pun:
+    # klaim yang sudah cair tetap milik periode pengakuannya.
+    c = ["1=1"]
     a = []
     if dari:
         c.append("tanggal_ajuan >= %s"); a.append(dari)
@@ -822,11 +951,20 @@ def neraca(per: Optional[str] = None):
     kas = _balance_dana(conn, "kas", per)
     bank = _balance_dana(conn, "bank", per)
 
-    q = "SELECT COALESCE(SUM(jumlah),0) AS v FROM klaim_bpjs WHERE status='diajukan'"
-    a = []
+    # Piutang BPJS per tanggal = klaim yang diakui s/d tanggal itu dan belum
+    # diterima dananya pada tanggal itu (klaim yang cair belakangan tetap
+    # piutang pada snapshot sebelumnya).
     if per:
-        q += " AND tanggal_ajuan <= %s"; a.append(per)
-    piutang_bpjs = conn.execute(q, a).fetchone()["v"]
+        piutang_bpjs = conn.execute(
+            "SELECT COALESCE(SUM(jumlah),0) AS v FROM klaim_bpjs "
+            "WHERE tanggal_ajuan <= %s "
+            "AND (status='diajukan' OR (status='cair' AND (tanggal_cair IS NULL OR tanggal_cair > %s)))",
+            (per, per),
+        ).fetchone()["v"]
+    else:
+        piutang_bpjs = conn.execute(
+            "SELECT COALESCE(SUM(jumlah),0) AS v FROM klaim_bpjs WHERE status='diajukan'"
+        ).fetchone()["v"]
 
     sub = ("SELECT tg.total - COALESCE((SELECT SUM(x.jumlah) FROM transaksi x "
            "WHERE x.tagihan_id=tg.id AND x.jenis='masuk'),0) AS sisa, tg.tanggal AS tanggal FROM tagihan tg")
