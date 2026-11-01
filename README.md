@@ -87,13 +87,27 @@ Catatan free tier Render: instance tidur setelah ±15 menit tanpa trafik, reques
 setelah tidur butuh ±30–60 detik. 750 jam instance/bulan, 512 MB RAM. Data aman karena
 tersimpan di Supabase, bukan di disk Render.
 
-### Alternatif gratis tanpa kartu: Hugging Face Spaces
+### Alternatif gratis tanpa kartu: Cloudflare Tunnel (dipakai sekarang)
 
-Bila Render tetap menolak akun tanpa kartu, repo ini juga siap untuk HF Spaces (Docker SDK):
-`README.md` sudah ber-frontmatter `sdk: docker` + `app_port: 7860` dan `Dockerfile`
-mendengarkan `$PORT` (default 7860). Langkahnya: New Space → SDK Docker → CPU basic (free) →
-Settings → Variables and secrets → `DATABASE_URL` → `git push https://<user>:<HF_TOKEN>@huggingface.co/spaces/<user>/<space> master:main`.
-Free tier: 2 vCPU / 16 GB RAM, tidur setelah ±48 jam tanpa kunjungan.
+Bila Render menolak akun tanpa kartu, aplikasi bisa langsung diakses dari internet
+lewat **Cloudflare Tunnel** — gratis, tanpa akun, tanpa kartu:
+
+1. Install `cloudflared` sekali saja: `winget install --id Cloudflare.cloudflared -e`
+2. Klik dua kali **`start-online.bat`** (sudah ada di repo ini). File itu menjalankan
+   server lokal lalu membuka tunnel.
+3. URL publik muncul di jendela "Tunnel", bentuknya `https://xxxx-yyyy.trycloudflare.com`.
+4. Akses dilindungi **Cloudflare Access**: hanya email yang didaftarkan di
+   `--allowed-mail` yang bisa masuk (dapat PIN sekali pakai lewat email).
+
+Batasan yang harus disadari: komputer harus tetap hidup selama dipakai, dan URL
+`trycloudflare.com` berganti setiap tunnel dijalankan ulang. Untuk URL tetap
+(mis. `app.famitra.co.id`) perlu akun Cloudflare gratis + domain, lalu pakai
+**named tunnel** — tanpa kartu kredit juga.
+
+Catatan: Hugging Face Docker Space kini **berbayar** (PRO) sejak Juli 2026, jadi bukan
+opsi gratis lagi. Alternatif cloud gratis lain yang masih tanpa kartu: Northflank
+Sandbox (2 service, selalu hidup) — namun akun baru perlu ditinjau dulu keamanannya.
+
 
 ### 3. Cek kesehatan setelah deploy
 
