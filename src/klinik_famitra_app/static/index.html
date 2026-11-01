@@ -47,7 +47,7 @@
   </div>
 </div>
 
-<!-- TOP NAV (full-width, tanpa sidebar) -->
+<!-- Navigasi utama dan pintasan klinik -->
 <header class="topnav">
   <div class="topnav-inner">
     <div class="nav-brand">
@@ -58,7 +58,7 @@
       </div>
     </div>
 
-    <nav class="navmenu">
+    <nav class="navmenu" aria-label="Pintasan halaman">
       <button data-view="dashboard" class="active">Dashboard</button>
       <button data-view="transaksi">Transaksi</button>
       <button data-view="tagihan">Tagihan</button>
@@ -76,16 +76,26 @@
       <div class="nav-user">
         <span class="avatar" id="nav-avatar">F</span>
         <span class="nav-user-name" id="nav-username">…</span>
-        <button class="nav-icon-btn" id="btn-ganti-pass" title="Ganti password">
+        <button class="nav-icon-btn" id="btn-ganti-pass" title="Ganti password" aria-label="Ganti password">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 11V7a7 7 0 0 1 14 0v4"/><rect x="3" y="11" width="18" height="10" rx="2.5"/></svg>
         </button>
-        <button class="nav-icon-btn" id="btn-logout" title="Keluar">
+        <button class="nav-icon-btn" id="btn-logout" title="Keluar" aria-label="Keluar">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="M16 17l5-5-5-5M21 12H9"/></svg>
         </button>
       </div>
     </div>
   </div>
 </header>
+
+<nav class="sidebar" aria-label="Navigasi utama">
+  <button type="button" data-view="dashboard" class="active" aria-current="page" aria-label="Dashboard" title="Dashboard"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="2"/><rect x="14" y="3" width="7" height="7" rx="2"/><rect x="3" y="14" width="7" height="7" rx="2"/><rect x="14" y="14" width="7" height="7" rx="2"/></svg><span class="rail-label">Dashboard</span></button>
+  <button type="button" data-view="transaksi" aria-label="Transaksi" title="Transaksi"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16m-4-4 4 4-4 4M20 17H4m4-4-4 4 4 4"/></svg><span class="rail-label">Transaksi</span></button>
+  <button type="button" data-view="tagihan" aria-label="Tagihan" title="Tagihan"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h12v18l-3-2-3 2-3-2-3 2V3Z M9 8h6M9 12h6"/></svg><span class="rail-label">Tagihan</span></button>
+  <button type="button" data-view="pasien" aria-label="Pasien" title="Pasien"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21v-2a8 8 0 0 1 16 0v2"/></svg><span class="rail-label">Pasien</span></button>
+  <button type="button" data-view="kunjungan" aria-label="Kunjungan" title="Kunjungan"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="16" rx="3"/><path d="M7 3v4m10-4v4M3 11h18M9 16h6m-3-3v6"/></svg><span class="rail-label">Kunjungan</span></button>
+  <button type="button" data-view="laporan" aria-label="Laporan" title="Laporan"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 3v18h17M8 17v-5m5 5V8m5 9V4"/></svg><span class="rail-label">Laporan</span></button>
+  <button type="button" data-view="master" aria-label="Master Data" title="Master Data"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h16M4 12h16M4 18h16"/><circle cx="9" cy="6" r="2" fill="currentColor"/><circle cx="15" cy="12" r="2" fill="currentColor"/><circle cx="9" cy="18" r="2" fill="currentColor"/></svg><span class="rail-label">Master Data</span></button>
+</nav>
 
 <main>
   <!-- DASHBOARD -->
@@ -96,127 +106,84 @@
         <p class="page-sub">Kas, pendapatan, dan piutang klinik dalam satu tampilan</p>
       </div>
       <div class="filterbar">
-        <input type="date" id="dash-dari">
+        <input type="date" id="dash-dari" aria-label="Tanggal mulai dashboard">
         <span>—</span>
-        <input type="date" id="dash-sampai">
+        <input type="date" id="dash-sampai" aria-label="Tanggal akhir dashboard">
         <button type="button" class="btn-mini" id="dash-refresh">Muat ulang</button>
       </div>
     </div>
 
-    <div class="kpi-grid">
-      <div class="kpi">
-        <div class="kpi-top">
-          <span class="kpi-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7.5A2.5 2.5 0 0 1 5.5 5H17"/><rect x="3" y="7.5" width="18" height="11.5" rx="2.2"/><path d="M16.5 13.2h2.2"/></svg></span>
-          <span class="kpi-label">Kas Tunai</span>
+    <div class="dashboard-workspace">
+      <div class="dashboard-main">
+        <div class="dashboard-overview">
+          <article class="panel balance-panel">
+            <div class="panel-head"><h3>Dana Klinik</h3><span class="eyebrow">SALDO BERJALAN</span></div>
+            <p class="balance-label">Kas &amp; rekening</p>
+            <div class="balance-value" id="card-dana">—</div>
+            <p class="panel-note">Termasuk saldo awal dan modal</p>
+            <div class="balance-actions">
+              <button type="button" class="btn-primary" onclick="switchView('transaksi')">Catat transaksi <span aria-hidden="true">↗</span></button>
+              <button type="button" class="btn-mini" onclick="switchView('laporan')">Lihat laporan</button>
+            </div>
+            <div class="balance-detail">
+              <span class="kpi-label">Kas Tunai</span>
+              <div class="kpi-value" id="card-tunai">—</div>
+              <p class="kpi-foot" id="sub-tunai">saldo berjalan</p>
+              <div class="meter"><i id="bar-kas" style="width:0%"></i></div>
+            </div>
+          </article>
+          <article class="panel trend-panel">
+            <div class="panel-head"><div><h3>Arus Kas 30 Hari</h3><p class="panel-note" id="tren-note">Uang masuk &amp; keluar per hari</p></div><span class="period-badge">30 hari</span></div>
+            <div class="flow-totals">
+              <div><span class="lg in">Pemasukan</span><strong class="masuk" id="card-masuk">—</strong></div>
+              <div><span class="lg out">Pengeluaran</span><strong class="keluar" id="card-keluar">—</strong></div>
+            </div>
+            <p class="panel-note">Total mengikuti periode terpilih; grafik menampilkan 30 hari terakhir hingga tanggal akhir.</p>
+            <div id="chart-tren" class="chart-box"><p class="empty-state">Grafik akan tampil setelah data dimuat.</p></div>
+          </article>
         </div>
-        <div class="kpi-value" id="card-tunai">Rp0</div>
-        <div class="kpi-foot"><span id="sub-tunai">saldo berjalan</span></div>
-        <div class="meter"><i id="bar-kas" style="width:0%"></i></div>
-      </div>
-
-      <div class="kpi">
-        <div class="kpi-top">
-          <span class="kpi-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="5.5" width="19" height="13" rx="2.2"/><path d="M2.5 10h19"/><path d="M6 15h4"/></svg></span>
-          <span class="kpi-label">Saldo Rekening</span>
+        <div class="dashboard-lower">
+          <article class="panel performance-panel">
+            <div class="panel-head"><div><h3>Ringkasan Pendapatan</h3><p class="panel-note">Kinerja pada periode terpilih</p></div><span class="period-badge">Akrual</span></div>
+            <p class="balance-label">Laba (akrual, + piutang)</p>
+            <div class="hero-value" id="card-laba">—</div>
+            <p class="panel-note">Pendapatan akrual − beban periode terpilih</p>
+            <div class="performance-chips"><span class="chip" id="chip-margin">margin —</span><span class="chip ghost" id="chip-realisasi">kas —</span></div>
+            <h3 class="summary-heading">Pemasukan per Metode Bayar</h3>
+            <div id="rekap-metode" class="rekap"><p class="empty-state">Menunggu data</p></div>
+          </article>
+          <article class="panel composition-panel">
+            <div class="panel-head"><div><h3>Komposisi Pemasukan</h3><p class="panel-note">Menurut unit layanan · hingga 6 terbesar</p></div></div>
+            <div id="chart-donut" class="chart-box donut-box"><p class="empty-state">Komposisi akan tampil setelah data dimuat.</p></div>
+            <div id="donut-legend" class="donut-legend"></div>
+          </article>
         </div>
-        <div class="kpi-value" id="card-bank">Rp0</div>
-        <div class="kpi-foot"><span>transfer, QRIS, kartu</span></div>
-        <div class="meter alt"><i id="bar-bank" style="width:0%"></i></div>
-      </div>
-
-      <div class="kpi">
-        <div class="kpi-top">
-          <span class="kpi-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7.5v9m0 0l3.2-3.2M12 16.5L8.8 13.3"/></svg></span>
-          <span class="kpi-label">Masuk</span>
+        <div class="rekap-grid">
+          <article class="panel"><h3>Pemasukan per Unit Layanan</h3><div id="rekap-unit" class="rekap"><p class="empty-state">Menunggu data</p></div></article>
+          <article class="panel"><h3>Pemasukan per Sumber Bayar</h3><div id="rekap-sumber" class="rekap"><p class="empty-state">Menunggu data</p></div></article>
+          <article class="panel expense-panel"><h3>Pengeluaran per Kategori</h3><div id="rekap-kategori" class="rekap"><p class="empty-state">Menunggu data</p></div></article>
         </div>
-        <div class="kpi-value masuk" id="card-masuk">Rp0</div>
-        <div class="kpi-foot"><span>periode terpilih</span></div>
       </div>
-
-      <div class="kpi">
-        <div class="kpi-top">
-          <span class="kpi-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 16.5v-9m0 0l3.2 3.2M12 7.5L8.8 10.7"/></svg></span>
-          <span class="kpi-label">Keluar</span>
-        </div>
-        <div class="kpi-value keluar" id="card-keluar">Rp0</div>
-        <div class="kpi-foot"><span>periode terpilih</span></div>
-      </div>
-
-      <div class="kpi">
-        <div class="kpi-top">
-          <span class="kpi-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l7 3v5.8c0 4.2-2.9 7.3-7 8.9-4.1-1.6-7-4.7-7-8.9V6z"/><path d="M9.2 12l2 2 3.6-3.8"/></svg></span>
-          <span class="kpi-label">Piutang BPJS</span>
-        </div>
-        <div class="kpi-value" id="card-piutang">Rp0</div>
-        <div class="kpi-foot"><span>klaim belum cair</span></div>
-      </div>
-
-      <div class="kpi">
-        <div class="kpi-top">
-          <span class="kpi-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="3.8"/><path d="M4.5 20.5c0-3.8 3.4-5.8 7.5-5.8s7.5 2 7.5 5.8"/></svg></span>
-          <span class="kpi-label">Piutang Pasien</span>
-        </div>
-        <div class="kpi-value" id="card-piutang-pasien">Rp0</div>
-        <div class="kpi-foot"><span>tagihan belum lunas</span></div>
-      </div>
-    </div>
-
-    <div class="hero">
-      <div class="hero-main">
-        <div class="kpi-top">
-          <span class="kpi-ic light"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17l6-6 4 4 7.5-7.5"/><path d="M14.5 7.5H21V14"/></svg></span>
-          <span class="kpi-label light">Laba (akrual, + piutang)</span>
-        </div>
-        <div class="hero-value" id="card-laba">Rp0</div>
-        <div class="hero-sub">pendapatan akrual − beban pada periode terpilih</div>
-      </div>
-      <div class="hero-side">
-        <span class="chip" id="chip-margin">margin 0%</span>
-        <span class="chip ghost" id="chip-realisasi">kas 0%</span>
-      </div>
-    </div>
-
-    <div class="charts">
-      <div class="panel">
-        <div class="panel-head">
-          <div>
-            <h3>Arus Kas 30 Hari</h3>
-            <p class="panel-note" id="tren-note">uang masuk vs keluar per hari</p>
-          </div>
-          <div class="legend"><span class="lg in">Masuk</span><span class="lg out">Keluar</span></div>
-        </div>
-        <div id="chart-tren" class="chart-box"></div>
-      </div>
-
-      <div class="panel">
-        <div class="panel-head">
-          <div>
-            <h3>Komposisi Pemasukan</h3>
-            <p class="panel-note">menurut unit layanan</p>
-          </div>
-        </div>
-        <div id="chart-donut" class="chart-box donut-box"></div>
-        <div id="donut-legend" class="donut-legend"></div>
-      </div>
-    </div>
-
-    <div class="rekap-grid">
-      <div class="panel">
-        <h3>Pemasukan per Metode Bayar</h3>
-        <div id="rekap-metode" class="rekap"></div>
-      </div>
-      <div class="panel">
-        <h3>Pemasukan per Unit Layanan</h3>
-        <div id="rekap-unit" class="rekap"></div>
-      </div>
-      <div class="panel">
-        <h3>Pemasukan per Sumber Bayar</h3>
-        <div id="rekap-sumber" class="rekap"></div>
-      </div>
-      <div class="panel">
-        <h3>Pengeluaran per Kategori</h3>
-        <div id="rekap-kategori" class="rekap"></div>
-      </div>
+      <aside class="dashboard-aside" aria-label="Rekening, piutang, dan transaksi">
+        <article class="panel account-summary">
+          <div class="panel-head"><span class="eyebrow">REKENING KLINIK</span><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="m3 9 9-6 9 6M3 10h18M5 11v7m5-7v7m4-7v7m5-7v7M3 21h18"/></svg></div>
+          <p class="balance-label">Saldo Rekening</p>
+          <div class="kpi-value" id="card-bank">—</div>
+          <p class="panel-note">Metode bayar dengan jenis dana rekening</p>
+          <div class="meter alt"><i id="bar-bank" style="width:0%"></i></div>
+          <div class="account-footer"><span>Klinik Fa-Mitra</span><span>Saldo berjalan</span></div>
+        </article>
+        <article class="panel receivables-panel">
+          <div class="panel-head"><h3>Piutang Klinik</h3><button type="button" class="text-link" onclick="switchView('tagihan')">Detail ↗</button></div>
+          <div class="receivable-row"><span class="receivable-icon" aria-hidden="true">B</span><div><span class="kpi-label">Piutang BPJS</span><strong id="card-piutang">—</strong><p class="panel-note">Klaim belum cair</p></div></div>
+          <div class="receivable-row"><span class="receivable-icon teal" aria-hidden="true">P</span><div><span class="kpi-label">Piutang Pasien</span><strong id="card-piutang-pasien">—</strong><p class="panel-note">Tagihan belum lunas</p></div></div>
+        </article>
+        <article class="panel recent-panel">
+          <div class="panel-head"><h3>Transaksi Terbaru</h3><button type="button" class="text-link" onclick="switchView('transaksi')">Semua ↗</button></div>
+          <p class="panel-note">Dalam periode terpilih</p>
+          <ul id="dashboard-recent" class="recent-list"><li class="empty-state">Transaksi akan tampil setelah data dimuat.</li></ul>
+        </article>
+      </aside>
     </div>
 
     <p class="hint" id="dash-hint">Kas tunai &amp; saldo rekening = saldo berjalan (termasuk saldo awal/modal). Masuk/Keluar mengikuti filter tanggal.</p>
@@ -571,15 +538,21 @@
   </section>
 </main>
 
-<nav class="tabbar">
-  <button data-view="dashboard" class="active">Dashboard</button>
-  <button data-view="transaksi">Transaksi</button>
-  <button data-view="tagihan">Tagihan</button>
-  <button data-view="pasien">Pasien</button>
-  <button data-view="kunjungan">Kunjungan</button>
-  <button data-view="laporan">Laporan</button>
-  <button data-view="master">Master</button>
+<nav class="tabbar" aria-label="Navigasi seluler">
+  <button type="button" data-view="dashboard" class="active" aria-current="page"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m3 10 9-7 9 7v10H3Z M9 20v-7h6v7"/></svg><span>Beranda</span></button>
+  <button type="button" data-view="tagihan"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h12v18l-3-2-3 2-3-2-3 2V3Z M9 8h6m-6 4h6"/></svg><span>Tagihan</span></button>
+  <button type="button" class="mobile-create" data-view="transaksi" aria-label="Catat transaksi"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg><span>Catat</span></button>
+  <button type="button" data-view="laporan"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 3v17h17M9 16v-5m5 5V7m5 9V4"/></svg><span>Laporan</span></button>
+  <button type="button" id="mobile-more-toggle" aria-controls="mobile-more" aria-expanded="false" aria-haspopup="dialog"><svg aria-hidden="true" viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg><span>Lainnya</span></button>
 </nav>
+<dialog id="mobile-more" class="mobile-more" aria-labelledby="mobile-more-title">
+  <div class="mobile-more-head"><h2 id="mobile-more-title">Menu lainnya</h2><button type="button" id="mobile-more-close" aria-label="Tutup menu">×</button></div>
+  <nav aria-label="Modul lainnya">
+    <button type="button" data-view="pasien"><span>Pasien</span><small>Data pasien &amp; tenaga kesehatan</small></button>
+    <button type="button" data-view="kunjungan"><span>Kunjungan</span><small>Pendaftaran &amp; rekam medis</small></button>
+    <button type="button" data-view="master"><span>Master Data</span><small>Pengaturan data klinik</small></button>
+  </nav>
+</dialog>
 
 <script src="/static/app.js"></script>
 </body>

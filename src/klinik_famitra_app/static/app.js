@@ -85,10 +85,35 @@ document.querySelectorAll('[data-view]').forEach((btn) => {
   btn.addEventListener('click', () => switchView(btn.dataset.view));
 });
 
+$('mobile-more-toggle').addEventListener('click', () => {
+  $('mobile-more').showModal();
+  $('mobile-more-toggle').setAttribute('aria-expanded', 'true');
+});
+$('mobile-more-close').addEventListener('click', closeMobileMore);
+$('mobile-more').addEventListener('cancel', (event) => {
+  event.preventDefault();
+  closeMobileMore();
+});
+$('mobile-more').addEventListener('close', () => {
+  $('mobile-more-toggle').setAttribute('aria-expanded', 'false');
+  $('mobile-more-toggle').focus();
+});
+// Native dialog traps focus; dismiss it when returning to the desktop layout.
+globalThis.matchMedia?.('(max-width: 767px)').addEventListener('change', closeMobileMore);
+
 function switchView(name) {
+  closeMobileMore();
+  document.querySelectorAll('[aria-controls="mobile-more"]').forEach((button) => {
+    button.classList.toggle('active', ['pasien', 'kunjungan', 'master'].includes(name));
+  });
   currentView = name;
   document.querySelectorAll('.view').forEach((v) => v.classList.remove('active'));
-  document.querySelectorAll('[data-view]').forEach((b) => b.classList.toggle('active', b.dataset.view === name));
+  document.querySelectorAll('[data-view]').forEach((b) => {
+    const active = b.dataset.view === name;
+    b.classList.toggle('active', active);
+    if (active) b.setAttribute('aria-current', 'page');
+    else b.removeAttribute('aria-current');
+  });
   $('view-' + name).classList.add('active');
   if (name === 'dashboard') renderDashboard();
   if (name === 'transaksi') renderTransaksi();
@@ -104,6 +129,10 @@ function switchView(name) {
     renderLaporanSub(active);
   }
   if (name === 'master') { renderMaster(); renderUsers(); }
+}
+
+function closeMobileMore() {
+  if ($('mobile-more').open) $('mobile-more').close();
 }
 
 // mode Tagihan: pasien / klaim dalam satu kartu (pola sama seperti Transaksi)
@@ -170,7 +199,8 @@ async function renderDashboard() {
   $('card-laba').textContent = rupiah(d.laba_akrual);
 
   // KPI dinamis: porsi kas vs rekening, margin laba, realisasi kas
-  const dana = (d.kas_tunai || 0) + (d.saldo_bank || 0);
+  const dana = (Number(d.kas_tunai) || 0) + (Number(d.saldo_bank) || 0);
+  $('card-dana').textContent = rupiah(dana);
   const pctKas = dana > 0 ? Math.round((d.kas_tunai / dana) * 100) : 0;
   $('sub-tunai').textContent = dana > 0 ? pctKas + '% dari total dana ' + rupiah(dana) : 'saldo berjalan';
   $('bar-kas').style.width = (dana > 0 ? Math.max(0, Math.min(100, (d.kas_tunai / dana) * 100)) : 0) + '%';
@@ -189,7 +219,26 @@ async function renderDashboard() {
   renderRekap('rekap-unit', d.per_unit);
   renderRekap('rekap-sumber', d.per_sumber);
   renderRekap('rekap-kategori', d.per_kategori);
-  renderCharts(d);
+  await Promise.all([renderCharts(d), renderRecentTransactions(q)]);
+}
+
+async function renderRecentTransactions(query) {
+  const el = $('dashboard-recent');
+  el.innerHTML = '<li class="empty-state">Memuat transaksi…</li>';
+  try {
+    const rows = await api('/api/transaksi?' + query.toString());
+    // Endpoint mengurutkan tanggal DESC, id DESC; jangan tampilkan identitas pasien di ringkasan.
+    el.innerHTML = rows.slice(0, 5).map((t) => {
+      const masuk = t.jenis === 'masuk';
+      const label = masuk ? (t.unit || 'Pemasukan') : (t.kategori || 'Pengeluaran');
+      return '<li class="recent-row ' + (masuk ? 'masuk' : 'keluar') + '"><span class="recent-icon" aria-hidden="true">' +
+        (masuk ? '↙' : '↗') + '</span><div><span class="recent-title">' + esc(label) + '</span>' +
+        '<span class="recent-meta">' + esc(t.tanggal) + (t.metode ? ' · ' + esc(t.metode) : '') + '</span>' +
+        '<span class="recent-amount">' + (masuk ? '+' : '−') + rupiah(t.jumlah) + '</span></div></li>';
+    }).join('') || '<li class="empty-state">Belum ada transaksi pada periode ini</li>';
+  } catch (e) {
+    el.innerHTML = '<li class="empty-state">Transaksi belum dapat dimuat. Coba muat ulang.</li>';
+  }
 }
 
 function renderRekap(elId, rows) {
@@ -269,12 +318,12 @@ function drawArea(el, data) {
     '<svg class="chart-svg" viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="Arus kas harian">' +
       '<defs>' +
         '<linearGradient id="gm" x1="0" y1="0" x2="0" y2="1">' +
-          '<stop offset="0" stop-color="#16a34a" stop-opacity=".26"/>' +
-          '<stop offset="1" stop-color="#16a34a" stop-opacity="0"/>' +
+          '<stop offset="0" stop-color="#168779" stop-opacity=".26"/>' +
+          '<stop offset="1" stop-color="#168779" stop-opacity="0"/>' +
         '</linearGradient>' +
         '<linearGradient id="gk" x1="0" y1="0" x2="0" y2="1">' +
-          '<stop offset="0" stop-color="#d03437" stop-opacity=".22"/>' +
-          '<stop offset="1" stop-color="#d03437" stop-opacity="0"/>' +
+          '<stop offset="0" stop-color="#e49532" stop-opacity=".22"/>' +
+          '<stop offset="1" stop-color="#e49532" stop-opacity="0"/>' +
         '</linearGradient>' +
       '</defs>' +
       '<g class="chart-grid">' + grid + '</g>' +
@@ -286,7 +335,7 @@ function drawArea(el, data) {
     '</svg>';
 }
 
-const DONUT_COLORS = ['#205eef', '#4d7ff0', '#759ef8', '#98b6f6', '#1d5ca8', '#8aa9f6', '#3d71e0'];
+const DONUT_COLORS = ['#168779', '#4d83c6', '#e49532', '#8b6bb1', '#d03437', '#58a5b3', '#7d8994'];
 
 function drawDonut(el, legendEl, items, total) {
   if (!el) return;
