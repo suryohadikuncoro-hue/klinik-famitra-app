@@ -168,6 +168,16 @@ SCHEMA = [
 ]
 
 
+def safe_target() -> str:
+    """Ringkasan target DB tanpa kredensial (aman untuk log/health check)."""
+    from urllib.parse import urlsplit
+
+    parts = urlsplit(DATABASE_URL)
+    host = parts.hostname or "?"
+    port = parts.port or 5432
+    return f"{host}:{port}{parts.path or ''}"
+
+
 def get_conn():
     """Buka koneksi psycopg baru (baris hasil = dict). Panggil conn.close() setelahnya.
 
@@ -190,3 +200,4 @@ def init_db():
         conn.commit()
     finally:
         conn.close()
+    print(f"[db] skema siap di {safe_target()}", flush=True)

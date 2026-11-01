@@ -30,7 +30,7 @@ app = FastAPI(title="Klinik Fa-Mitra App - Keuangan", lifespan=lifespan)
 
 
 # ---------------- Middleware auth (semua /api kecuali login wajib token) ----------------
-PUBLIC_PATHS = {"/api/login"}
+PUBLIC_PATHS = {"/api/login", "/api/health"}
 
 
 def _user_from_request(request: Request):
@@ -1269,6 +1269,23 @@ def delete_user(request: Request, uid: int):
 
 # ---------------- Frontend ----------------
 app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
+
+
+@app.get("/api/health")
+def health():
+    """Cek kesehatan untuk health check hosting (Render): app hidup + DB terjangkau."""
+    try:
+        conn = db.get_conn()
+        try:
+            conn.execute("SELECT 1")
+        finally:
+            conn.close()
+    except Exception as exc:  # noqa: BLE001 - laporkan apa pun sebagai tidak sehat
+        return JSONResponse(
+            status_code=503,
+            content={"ok": False, "db": db.safe_target(), "error": str(exc)},
+        )
+    return {"ok": True, "db": db.safe_target()}
 
 
 @app.get("/")

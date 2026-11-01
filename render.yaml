@@ -3,7 +3,7 @@ services:
     name: klinik-famitra-app
     runtime: docker
     plan: free
-    healthCheckPath: /
+    healthCheckPath: /api/health
     envVars:
       - key: DATABASE_URL
         sync: false
