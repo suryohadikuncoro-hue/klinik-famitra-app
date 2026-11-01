@@ -927,11 +927,14 @@ $('form-rekam').addEventListener('submit', async (e) => {
   if (!rmKunjunganId) return;
   const body = {
     kunjungan_id: rmKunjunganId,
-    anamnesa: $('rm-anamnesa').value.trim() || null,
-    diagnosa: $('rm-diagnosa').value.trim() || null,
-    tindakan: $('rm-tindakan').value.trim() || null,
-    terapi: $('rm-terapi').value.trim() || null,
-    keterangan: $('rm-keterangan').value.trim() || null,
+    // Kirim string apa adanya (bukan null): field yang DIKOSONGKAN dokter
+    // harus benar-benar terhapus, sedangkan field yang tidak dikirim (null)
+    // dipertahankan backend.
+    anamnesa: $('rm-anamnesa').value.trim(),
+    diagnosa: $('rm-diagnosa').value.trim(),
+    tindakan: $('rm-tindakan').value.trim(),
+    terapi: $('rm-terapi').value.trim(),
+    keterangan: $('rm-keterangan').value.trim(),
   };
   try { await postJSON('/api/rekam-medis', body); }
   catch (err) { alert(err.message); return; }

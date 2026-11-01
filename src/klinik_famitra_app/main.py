@@ -1113,9 +1113,9 @@ def status_kunjungan(kid: int, body: dict):
 @app.delete("/api/kunjungan/{kid}")
 def delete_kunjungan(kid: int):
     conn = db.get_conn()
-    conn.execute("DELETE FROM rekam_medis WHERE kunjungan_id=%s", (kid,))
-    cur = conn.execute("DELETE FROM kunjungan WHERE id=%s", (kid,))
-    conn.commit()
+    with conn.transaction():  # atomic: rekam medis + kunjungan terhapus bersama
+        conn.execute("DELETE FROM rekam_medis WHERE kunjungan_id=%s", (kid,))
+        cur = conn.execute("DELETE FROM kunjungan WHERE id=%s", (kid,))
     conn.close()
     if cur.rowcount == 0:
         raise HTTPException(404, "kunjungan tidak ditemukan")
@@ -1139,8 +1139,15 @@ def save_rekam_medis(rm: RekamMedisIn):
     cur = conn.execute(
         "INSERT INTO rekam_medis (kunjungan_id, anamnesa, diagnosa, tindakan, terapi, keterangan) "
         "VALUES (%s,%s,%s,%s,%s,%s) "
-        "ON CONFLICT (kunjungan_id) DO UPDATE SET anamnesa=EXCLUDED.anamnesa, diagnosa=EXCLUDED.diagnosa, "
-        "tindakan=EXCLUDED.tindakan, terapi=EXCLUDED.terapi, keterangan=EXCLUDED.keterangan",
+        # Field yang tidak dikirim (NULL) TIDAK menimpa isi lama: dokter sering
+        # menyimpan rekam medis bertahap, dan menimpa dengan NULL akan
+        # menghapus catatan sebelumnya.
+        "ON CONFLICT (kunjungan_id) DO UPDATE SET "
+        "anamnesa=COALESCE(EXCLUDED.anamnesa, rekam_medis.anamnesa), "
+        "diagnosa=COALESCE(EXCLUDED.diagnosa, rekam_medis.diagnosa), "
+        "tindakan=COALESCE(EXCLUDED.tindakan, rekam_medis.tindakan), "
+        "terapi=COALESCE(EXCLUDED.terapi, rekam_medis.terapi), "
+        "keterangan=COALESCE(EXCLUDED.keterangan, rekam_medis.keterangan)",
         (rm.kunjungan_id, rm.anamnesa, rm.diagnosa, rm.tindakan, rm.terapi, rm.keterangan),
     )
     conn.commit()
@@ -1259,9 +1266,9 @@ def delete_user(request: Request, uid: int):
     if me and me["id"] == uid:
         raise HTTPException(400, "tidak bisa menghapus akun sendiri")
     conn = db.get_conn()
-    cur = conn.execute("DELETE FROM users WHERE id=%s", (uid,))
-    conn.execute("DELETE FROM sessions WHERE user_id=%s", (uid,))
-    conn.commit()
+    with conn.transaction():  # atomic; sesi dihapus dulu (FK sessions -> users)
+        conn.execute("DELETE FROM sessions WHERE user_id=%s", (uid,))
+        cur = conn.execute("DELETE FROM users WHERE id=%s", (uid,))
     conn.close()
     if cur.rowcount == 0:
         raise HTTPException(404, "user tidak ditemukan")

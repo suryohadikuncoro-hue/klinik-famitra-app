@@ -189,7 +189,7 @@ def _conn_kwargs() -> dict:
     (pooler Supabase/PgBouncer tidak mendukung prepared statement, dan
     mewajibkan SSL). PostgreSQL lokal tidak terpengaruh.
     """
-    kwargs = {"row_factory": dict_row, "prepare_threshold": None}
+    kwargs = {"row_factory": dict_row, "prepare_threshold": None, "autocommit": True}
     if "supabase" in DATABASE_URL:
         kwargs["sslmode"] = "require"
     return kwargs
