@@ -169,8 +169,16 @@ SCHEMA = [
 
 
 def get_conn():
-    """Buka koneksi psycopg baru (baris hasil = dict). Panggil conn.close() setelahnya."""
-    return psycopg.connect(DATABASE_URL, row_factory=dict_row)
+    """Buka koneksi psycopg baru (baris hasil = dict). Panggil conn.close() setelahnya.
+
+    Supabase: paksa SSL + nonaktifkan server-side prepared statement
+    (pooler Supabase/PgBouncer tidak mendukung prepared statement, dan
+    mewajibkan SSL). PostgreSQL lokal tidak terpengaruh.
+    """
+    kwargs = {"row_factory": dict_row, "prepare_threshold": None}
+    if "supabase" in DATABASE_URL:
+        kwargs["sslmode"] = "require"
+    return psycopg.connect(DATABASE_URL, **kwargs)
 
 
 def init_db():
