@@ -8,6 +8,7 @@ import os
 
 import psycopg
 from psycopg.rows import dict_row
+from psycopg_pool import ConnectionPool
 
 DATABASE_URL = os.environ.get(
     "DATABASE_URL",
@@ -178,8 +179,11 @@ def safe_target() -> str:
     return f"{host}:{port}{parts.path or ''}"
 
 
-def get_conn():
-    """Buka koneksi psycopg baru (baris hasil = dict). Panggil conn.close() setelahnya.
+_pool = None
+
+
+def _conn_kwargs() -> dict:
+    """Opsi koneksi: baris hasil = dict.
 
     Supabase: paksa SSL + nonaktifkan server-side prepared statement
     (pooler Supabase/PgBouncer tidak mendukung prepared statement, dan
@@ -188,15 +192,83 @@ def get_conn():
     kwargs = {"row_factory": dict_row, "prepare_threshold": None}
     if "supabase" in DATABASE_URL:
         kwargs["sslmode"] = "require"
-    return psycopg.connect(DATABASE_URL, **kwargs)
+    return kwargs
+
+
+def get_pool():
+    """Connection pool yang dibuka sekali per proses.
+
+    Tanpa pool, tiap request membayar TCP + TLS + auth ke Supabase
+    (~1,5-2 detik dari jaringan biasa). Dengan pool, koneksi dipakai ulang
+    sehingga request hanya membayar satu round-trip query.
+    """
+    global _pool
+    if _pool is None:
+        _pool = ConnectionPool(
+            DATABASE_URL,
+            kwargs=_conn_kwargs(),
+            min_size=1,
+            max_size=5,
+            open=False,
+            close_returns=True,  # conn.close() -> kembali ke pool, bukan ditutup
+            check=ConnectionPool.check_connection,  # buang koneksi yang sudah mati
+            timeout=30,
+            max_idle=300,  # koneksi menganggur >5 menit dibuang
+            max_lifetime=1800,
+            reconnect_timeout=120,
+        )
+        _pool.open(wait=True, timeout=30)
+    return _pool
+
+
+def get_conn():
+    """Ambil koneksi dari pool. Tetap panggil conn.close() setelahnya.
+
+    close() mengembalikan koneksi ke pool (close_returns=True), jadi pola
+    `conn = get_conn() ... conn.close()` di seluruh kode tetap berlaku.
+    """
+    return get_pool().getconn()
+
+
+def close_pool():
+    """Tutup pool saat aplikasi berhenti."""
+    global _pool
+    if _pool is not None:
+        _pool.close()
+        _pool = None
+
+
+def pool_stats() -> dict:
+    """Ringkasan isi pool untuk diagnosis (dipakai /api/health)."""
+    if _pool is None:
+        return {}
+    stats = _pool.get_stats()
+    size = stats.get("pool_size", 0)
+    available = stats.get("pool_available", 0)
+    return {
+        "size": size,
+        "available": available,
+        "in_use": size - available,
+        "waiting": stats.get("requests_waiting", 0),
+        "requests": stats.get("requests_num", 0),
+        "errors": stats.get("requests_errors", 0),
+    }
+
 
 
 def init_db():
+    """Buat skema bila belum ada.
+
+    Semua DDL dikirim dalam SATU pernyataan: PostgreSQL mengeksekusinya
+    berurutan dalam satu transaksi, jadi init hanya butuh satu round-trip
+    (~0,3 s ke Supabase) bukan satu round-trip per tabel (~8 s).
+    CREATE ... IF NOT EXISTS tetap idempotent, sehingga tabel baru pada
+    versi aplikasi berikutnya ikut dibuat saat start.
+    """
     conn = get_conn()
     try:
         with conn.cursor() as cur:
-            for stmt in SCHEMA:
-                cur.execute(stmt)
+            cur.execute(";\n".join(SCHEMA))
         conn.commit()
     finally:
         conn.close()

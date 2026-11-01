@@ -24,6 +24,7 @@ async def lifespan(app: FastAPI):
     seed.seed_admin()
     auth.cleanup_expired_sessions()
     yield
+    db.close_pool()
 
 
 app = FastAPI(title="Klinik Fa-Mitra App - Keuangan", lifespan=lifespan)
@@ -1285,7 +1286,7 @@ def health():
             status_code=503,
             content={"ok": False, "db": db.safe_target(), "error": str(exc)},
         )
-    return {"ok": True, "db": db.safe_target()}
+    return {"ok": True, "db": db.safe_target(), "pool": db.pool_stats()}
 
 
 @app.get("/")

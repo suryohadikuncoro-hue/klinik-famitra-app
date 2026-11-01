@@ -72,6 +72,7 @@ def main() -> int:
 
     print()
     print("OK — aplikasi siap dijalankan dengan database ini.")
+    db.close_pool()
     return 0
 
 
