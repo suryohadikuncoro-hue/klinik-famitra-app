@@ -209,3 +209,79 @@ def test_pemasukan_non_bpjs_tetap_jadi_kas(client, master):
         assert sesudah["bpjs_periode"] == sebelum["bpjs_periode"]
     finally:
         _bersihkan([], [tid] if tid else [])
+
+
+def test_cair_batch_terima_semua_klaim_sekaligus(client, master):
+    """Satu klik "Terima Dana": semua klaim diajukan cair dalam SATU transaksi DB.
+
+    Setiap klaim tetap dapat baris transaksi penerimaan sendiri; subset via `ids`
+    juga diuji; validasi tanggal/metode sama dengan versi per-klaim.
+    """
+    bpjs, unit, metode = _bpjs(master), _unit(master), _metode(master)
+    tanda = "uji-batch-" + uuid.uuid4().hex[:8]
+    klaim_ids, trx_ids = [], []
+
+    def _buat_klaim(jumlah):
+        r = client.post("/api/transaksi", json={
+            "tanggal": TODAY,
+            "jenis": "masuk",
+            "unit_layanan_id": unit["id"],
+            "sumber_bayar_id": bpjs["id"],
+            "jumlah": jumlah,
+            "keterangan": tanda,
+            "dicatat_oleh": "uji",
+        })
+        assert r.status_code == 200, r.text
+        return r.json()["klaim_id"]
+
+    try:
+        klaim_ids = [_buat_klaim(100_000), _buat_klaim(150_000)]
+        total_baru = 250_000
+
+        # Validasi tetap jalan untuk jalur batch
+        assert client.post("/api/klaim/cair-batch", json={"tanggal_cair": TODAY}).status_code == 400
+        assert client.post(
+            "/api/klaim/cair-batch",
+            json={"tanggal_cair": TODAY, "metode_bayar_id": 999999},
+        ).status_code == 400
+        assert client.post(
+            "/api/klaim/cair-batch",
+            json={"tanggal_cair": "2000-01-01", "metode_bayar_id": metode["id"]},
+        ).status_code == 400
+        assert client.post(
+            "/api/klaim/cair-batch",
+            json={"tanggal_cair": TODAY, "metode_bayar_id": metode["id"], "ids": [klaim_ids[0], 999999]},
+        ).status_code == 400, "id yang tidak ada harus ditolak"
+
+        # Terima SEMUA sekaligus
+        r = client.post(
+            "/api/klaim/cair-batch",
+            json={"tanggal_cair": TODAY, "metode_bayar_id": metode["id"]},
+        )
+        assert r.status_code == 200, r.text
+        body = r.json()
+        assert body["ok"] is True and body["jumlah_klaim"] >= len(klaim_ids)
+        trx_ids = list(body["transaksi_ids"])
+
+        # Semua klaim milik uji ini kini cair, masing-masing satu transaksi
+        daftar = {k["id"]: k for k in client.get("/api/klaim").json()}
+        for kid in klaim_ids:
+            assert daftar[kid]["status"] == "cair"
+            assert daftar[kid]["tanggal_cair"] == TODAY
+        assert len(trx_ids) == len(set(trx_ids)), "tidak boleh ada transaksi dobel"
+        baris = [t for t in client.get("/api/transaksi").json() if t["id"] in trx_ids]
+        assert sum(b["jumlah"] for b in baris) >= total_baru
+
+        # Idempotent: batch ulang saat tidak ada yang diajukan -> 0 klaim
+        r = client.post(
+            "/api/klaim/cair-batch",
+            json={"tanggal_cair": TODAY, "metode_bayar_id": metode["id"], "ids": klaim_ids},
+        )
+        assert r.status_code == 200
+        assert r.json()["jumlah_klaim"] == 0
+
+        # Jejak terjaga: klaim yang sudah cair tidak bisa dihapus
+        for kid in klaim_ids:
+            assert client.delete(f"/api/klaim/{kid}").status_code == 400
+    finally:
+        _bersihkan(klaim_ids, trx_ids)

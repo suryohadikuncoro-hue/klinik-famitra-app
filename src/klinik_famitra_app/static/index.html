@@ -286,13 +286,14 @@
           </div>
 
           <div id="tg-fields-klaim" class="form-fields hidden">
-            <div class="info-block">
-              <p><b>Klaim BPJS terbentuk otomatis.</b> Setiap pemasukan dengan sumber bayar
-              BPJS Kesehatan yang dicatat di menu <b>Transaksi</b> langsung menjadi piutang
-              dan muncul di daftar klaim ini.</p>
-              <p>Piutang belum menambah kas. Setelah dana dari BPJS benar-benar diterima,
-              tekan <b>Terima Dana</b> pada klaim yang sesuai — sistem mencatat uang masuk
-              ke kas/rekening dan mengurangi piutang dalam satu langkah.</p>
+            <div id="tg-klaim-template" class="hidden">
+              <label>Tanggal
+                <input type="date" id="kl-tanggal" required>
+              </label>
+              <label>Metode Bayar
+                <select id="kl-metode"></select>
+              </label>
+              <button type="button" class="btn-primary" id="kl-submit">Terima Dana (Semua Klaim)</button>
             </div>
           </div>
 
@@ -307,7 +308,10 @@
         </div>
         <label class="check" id="tg-filter-wrap"><input type="checkbox" id="tg-hanya-sisa"> Hanya yang belum lunas</label>
         <ul id="tagihan-list" class="list"></ul>
-        <ul id="klaim-list" class="list hidden"></ul>
+        <div id="klaim-wrap" class="hidden">
+          <ul id="klaim-list" class="list"></ul>
+          <div id="klaim-total" class="klaim-total"></div>
+        </div>
       </div>
     </div>
   </section>

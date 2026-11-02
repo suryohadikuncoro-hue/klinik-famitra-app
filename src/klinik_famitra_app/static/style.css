@@ -309,6 +309,16 @@ h3 { font-size: 13.5px; margin: 0; color: var(--text); font-weight: 700; letter-
 .pay-row input, .pay-row select { flex: 1; min-width: 0; border: 1px solid var(--border); border-radius: 8px; padding: 8px; font-size: 14px; background: #fff; }
 .pay-form .li-sub { margin: 0; }
 
+.klaim-total { margin-top: 12px; display: grid; gap: 6px; }
+.klaim-total .kt-row {
+  display: flex; justify-content: space-between; align-items: baseline; gap: 12px;
+  padding: 10px 14px; border: 1px solid var(--border); border-radius: 12px; background: #fff;
+  font-size: 14px; color: var(--text, #363533);
+}
+.klaim-total .kt-pending { border-color: rgba(208, 52, 55, .35); background: #fdf2f2; }
+.klaim-total .kt-pending span { font-weight: 600; }
+.klaim-total .kt-row b { font-variant-numeric: tabular-nums; }
+
 /* ===================== Master ===================== */
 .master-block { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 16px 18px; margin-bottom: 14px; }
 .master-block h3 { margin: 0 0 10px; }

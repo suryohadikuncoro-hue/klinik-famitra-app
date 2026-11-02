@@ -606,6 +606,83 @@ def create_klaim(k: KlaimIn):
     )
 
 
+@app.post("/api/klaim/cair-batch")
+def cairkan_klaim_batch(body: dict):
+    """Terima dana SEMUA klaim berstatus 'diajukan' sekaligus (atau subset via `ids`).
+
+    Satu klik di tab Klaim BPJS: setiap klaim tetap mendapat baris transaksi
+    penerimaan sendiri (jejak uang per klaim terjaga), semua dalam SATU
+    transaksi database — sukses semua atau tidak sama sekali.
+    """
+    tanggal_cair = (body or {}).get("tanggal_cair") or (body or {}).get("tanggal")
+    metode_id = (body or {}).get("metode_bayar_id")
+    ids = (body or {}).get("ids")
+    if not tanggal_cair:
+        raise HTTPException(400, "tanggal terima dana wajib diisi")
+    if not metode_id:
+        raise HTTPException(400, "metode bayar wajib dipilih (tunai/transfer/QRIS)")
+    if ids is not None:
+        if not isinstance(ids, list) or not all(isinstance(i, int) for i in ids):
+            raise HTTPException(400, "ids harus list angka bila diisi")
+
+    conn = db.get_conn()
+    try:
+        with conn.transaction():
+            if not _metode_valid(conn, int(metode_id)):
+                raise HTTPException(400, "metode bayar tidak valid")
+            if ids is None:
+                rows = conn.execute(
+                    "SELECT * FROM klaim_bpjs WHERE status='diajukan' ORDER BY id FOR UPDATE"
+                ).fetchall()
+            else:
+                rows = [
+                    r
+                    for r in (
+                        conn.execute(
+                            "SELECT * FROM klaim_bpjs WHERE id=%s FOR UPDATE", (i,)
+                        ).fetchone()
+                        for i in ids
+                    )
+                    if r is not None
+                ]
+                if len(rows) != len(ids):
+                    raise HTTPException(400, "ada id klaim yang tidak ditemukan")
+            rows = [k for k in rows if k["status"] == "diajukan"]
+            if not rows:
+                return {"ok": True, "jumlah_klaim": 0, "total": 0, "transaksi_ids": []}
+            for k in rows:
+                if tanggal_cair < k["tanggal_ajuan"]:
+                    raise HTTPException(
+                        400,
+                        f"tanggal terima dana tidak boleh sebelum tanggal pengakuan piutang "
+                        f"(klaim #{k['id']} diajukan {k['tanggal_ajuan']})",
+                    )
+            sumber_id = rows[0]["sumber_bayar_id"] or _sumber_bpjs_id(conn)
+            trx_ids = []
+            total = 0
+            for k in rows:
+                cur = conn.execute(
+                    "INSERT INTO transaksi (tanggal, jenis, unit_layanan_id, sumber_bayar_id, "
+                    "metode_bayar_id, jumlah, keterangan, dicatat_oleh) "
+                    "VALUES (%s,'masuk',%s,%s,%s,%s,%s,%s) RETURNING id",
+                    (
+                        tanggal_cair, k["unit_layanan_id"],
+                        k["sumber_bayar_id"] or sumber_id, int(metode_id), k["jumlah"],
+                        "Penerimaan klaim BPJS" + (f" — {k['keterangan']}" if k["keterangan"] else ""),
+                        k["dicatat_oleh"],
+                    ),
+                )
+                trx_ids.append(cur.fetchone()["id"])
+                total += k["jumlah"]
+                conn.execute(
+                    "UPDATE klaim_bpjs SET status='cair', tanggal_cair=%s, transaksi_id=%s WHERE id=%s",
+                    (tanggal_cair, trx_ids[-1], k["id"]),
+                )
+    finally:
+        conn.close()
+    return {"ok": True, "jumlah_klaim": len(trx_ids), "total": total, "transaksi_ids": trx_ids}
+
+
 @app.post("/api/klaim/{kid}/cair")
 def cairkan_klaim(kid: int, body: dict):
     """Terima dana klaim: piutang berkurang, kas/rekening bertambah — satu langkah.

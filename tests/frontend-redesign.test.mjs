@@ -162,16 +162,23 @@ test('charts use distinct data colors while navigation exposes its current page'
 });
 
 
-test('BPJS source is treated as a receivable: no method field, no manual claim form', () => {
+test('BPJS source is treated as a receivable: no method field, claim list with one-click receive', () => {
   const html = file('index.html');
   assert.match(html, /id="t-bpjs-hint"/, 'form transaksi menjelaskan BPJS = piutang');
   assert.match(html, /id="t-metode-wrap"/, 'metode bayar bisa disembunyikan untuk BPJS');
   const klaimBlock = html.match(/<div id="tg-fields-klaim"[\s\S]*?<\/div>\s*<\/div>/)[0];
-  assert.doesNotMatch(klaimBlock, /<input|<select/, 'klaim tidak punya input manual');
+  // Form satu-klik "Terima Dana semua klaim" — bukan form INPUT klaim manual
+  // (klaim tetap terbentuk otomatis dari menu Transaksi).
+  assert.match(klaimBlock, /id="kl-submit"/, 'tombol terima dana semua klaim ada');
+  assert.doesNotMatch(klaimBlock, /id="(k-tanggal|k-unit|k-jumlah|k-ket)"/, 'tidak ada input klaim manual');
+  assert.doesNotMatch(file('app.js'), /data-bukat|data-terima=/, 'tidak ada pay-form per baris klaim');
+  assert.match(html, /id="klaim-total"/, 'footer total klaim ada');
 
   const source = file('app.js');
   assert.match(source, /if \(!bpjs\) body\.metode_bayar_id/, 'metode tidak dikirim untuk BPJS');
   assert.match(source, /res\.pencatatan === 'piutang_bpjs'/, 'user diberi tahu hasilnya piutang');
+  // Opsi BPJS tidak muncul di dropdown sumber Tagihan (piutang BPJS hanya lewat Transaksi).
+  assert.match(source, /MASTER\.sumber_bayar\.filter\(\(s\) => !s\.is_bpjs\)/, 'opsi BPJS disembunyikan dari form Tagihan');
 
   const els = {};
   const get = id => {

@@ -56,7 +56,10 @@ async function loadMaster() {
   fillSelect('t-unit-keluar', MASTER.unit_layanan, '— (beban bersama)');
   fillSelect('t-metode', MASTER.metode_bayar);
   fillSelect('tg-unit', MASTER.unit_layanan, '—');
-  fillSelect('tg-sumber', MASTER.sumber_bayar);
+  // Tagihan pasien tidak boleh bersumber BPJS: piutang BPJS dibentuk otomatis
+  // dari menu Transaksi, jadi opsi BPJS disembunyikan dari form ini.
+  fillSelect('tg-sumber', MASTER.sumber_bayar.filter((s) => !s.is_bpjs));
+  fillSelect('kl-metode', MASTER.metode_bayar);
   syncBpjsMode();
   renderMaster();
 }
@@ -150,7 +153,7 @@ function setTagihanMode(mode) {
   $('tg-list-hint').textContent = mode === 'klaim' ? 'piutang → dana diterima' : 'terbaru di atas';
   $('tg-filter-wrap').classList.toggle('hidden', mode === 'klaim');
   $('tagihan-list').classList.toggle('hidden', mode === 'klaim');
-  $('klaim-list').classList.toggle('hidden', mode !== 'klaim');
+  $('klaim-wrap').classList.toggle('hidden', mode !== 'klaim');
   // grup yang tersembunyi WAJIB di-disable: elemen display:none tetap ikut
   // validasi `required`, jadi tanpa ini submit selalu diblokir browser
   document.querySelectorAll('#tg-fields-pasien input, #tg-fields-pasien select').forEach((el) => { el.disabled = mode !== 'pasien'; });
@@ -560,60 +563,44 @@ async function renderTagihan() {
 
 async function renderKlaim() {
   const rows = await api('/api/klaim');
+  const pending = rows.filter((k) => k.status !== 'cair');
+  const cair = rows.filter((k) => k.status === 'cair');
+  const totalPending = pending.reduce((a, k) => a + Number(k.jumlah), 0);
+  const totalCair = cair.reduce((a, k) => a + Number(k.jumlah), 0);
+
   $('klaim-list').innerHTML = rows.map((k) => {
-    const cair = k.status === 'cair';
-    const badge = cair
+    const sudah = k.status === 'cair';
+    const badge = sudah
       ? '<span class="badge cair">dana diterima</span>'
       : '<span class="badge diajukan">piutang</span>';
     const ket = k.keterangan ? '<div class="li-sub">' + esc(k.keterangan) + '</div>' : '';
     const meta = [k.tanggal_ajuan + (k.tanggal_cair ? ' → dana diterima ' + k.tanggal_cair : ''),
       k.dicatat_oleh ? 'oleh ' + k.dicatat_oleh : ''].filter(Boolean).join(' · ');
-    const payForm = cair ? '' :
-      '<div class="pay-form hidden">' +
-        '<div class="pay-row">' +
-          '<input type="date" class="pay-tgl" value="' + todayStr + '">' +
-          '<select class="pay-metode">' + metodeOptions() + '</select>' +
-        '</div>' +
-        '<div class="pay-row">' +
-          '<button class="btn-mini" data-terima="' + k.id + '">Konfirmasi terima dana</button>' +
-        '</div>' +
-        '<div class="li-sub">Uang masuk dicatat ke kas/rekening sesuai metode di atas, piutang berkurang.</div>' +
-      '</div>';
-    return '<li class="' + (cair ? 'lunas' : '') + '" data-id="' + k.id + '"><div class="li-main">' +
+    return '<li class="' + (sudah ? 'lunas' : '') + '" data-id="' + k.id + '"><div class="li-main">' +
       '<div class="li-title">' + esc(k.unit || 'Unit') + (k.sumber ? ' · ' + esc(k.sumber) : '') + '</div>' +
       '<div class="li-sub">' + esc(meta) + '</div>' + ket + '</div>' +
       badge +
       '<span class="li-amount">' + rupiah(k.jumlah) + '</span>' +
-      (cair ? '' : '<button class="btn-mini cair" data-bukat="' + k.id + '">Terima Dana</button>') +
-      (cair ? '' : '<button class="btn-mini hapus" data-delk="' + k.id + '">Hapus</button>') +
-      payForm + '</li>';
+      (sudah ? '' : '<button class="btn-mini hapus" data-delk="' + k.id + '">Hapus</button>') +
+    '</li>';
   }).join('') || '<li class="rekap-row empty">Belum ada klaim. Catat pemasukan bersumber BPJS di menu Transaksi.</li>';
 
-  document.querySelectorAll('#klaim-list [data-bukat]').forEach((b) => {
-    b.addEventListener('click', () => {
-      const pf = b.closest('li').querySelector('.pay-form');
-      if (pf) pf.classList.toggle('hidden');
-    });
+  // Footer total: baris pertama = jumlah yang masih ditagih ke BPJS (belum diterima).
+  $('klaim-total').innerHTML =
+    '<div class="kt-row kt-pending"><span>Total ditagih ke BPJS (belum diterima)</span>' +
+      '<b>' + rupiah(totalPending) + '</b></div>' +
+    (cair.length ? '<div class="kt-row"><span>Sudah diterima (' + cair.length + ' klaim)</span>' +
+      '<b>' + rupiah(totalCair) + '</b></div>' : '');
+
+  // Form "Terima Dana" hanya tampil bila ada piutang; kosong saat semua sudah cair.
+  // Input yang disembunyikan WAJIB di-disable: display:none tetap ikut validasi required.
+  $('tg-klaim-template').classList.toggle('hidden', pending.length === 0);
+  document.querySelectorAll('#tg-klaim-template input, #tg-klaim-template select, #kl-submit').forEach((el) => {
+    el.disabled = pending.length === 0;
   });
-  document.querySelectorAll('#klaim-list [data-terima]').forEach((b) => {
-    b.addEventListener('click', async () => {
-      const li = b.closest('li');
-      const body = {
-        tanggal_cair: li.querySelector('.pay-tgl').value,
-        metode_bayar_id: parseInt(li.querySelector('.pay-metode').value, 10),
-      };
-      if (!body.tanggal_cair) { alert('Tanggal terima dana wajib diisi'); return; }
-      b.disabled = true;
-      try {
-        await postJSON('/api/klaim/' + b.dataset.terima + '/cair', body);
-      } catch (err) {
-        b.disabled = false;
-        alert(err.message);
-        return;
-      }
-      renderKlaim();
-    });
-  });
+  $('kl-tanggal').value = todayStr;
+  $('kl-submit').textContent = 'Terima Dana (' + pending.length + ' klaim · ' + rupiah(totalPending) + ')';
+
   document.querySelectorAll('#klaim-list [data-delk]').forEach((b) => {
     b.addEventListener('click', async () => {
       if (!confirm('Hapus piutang klaim ini? (belum ada dana diterima)')) return;
@@ -622,6 +609,27 @@ async function renderKlaim() {
     });
   });
 }
+
+$('kl-submit').addEventListener('click', async () => {
+  const tanggal = $('kl-tanggal').value;
+  const metode = $('kl-metode').value;
+  if (!tanggal) { alert('Tanggal terima dana wajib diisi'); return; }
+  if (!metode) { alert('Metode bayar wajib dipilih'); return; }
+  $('kl-submit').disabled = true;
+  try {
+    const res = await postJSON('/api/klaim/cair-batch', {
+      tanggal_cair: tanggal,
+      metode_bayar_id: parseInt(metode, 10),
+    });
+    alert('Dana diterima: ' + res.jumlah_klaim + ' klaim, total ' + rupiah(res.total) +
+      '.\nUang masuk dicatat ke kas/rekening sesuai metode, piutang berkurang.');
+  } catch (err) {
+    $('kl-submit').disabled = false;
+    alert(err.message);
+    return;
+  }
+  renderKlaim();
+});
 
 // ---------- laporan per unit ----------
 async function renderPerUnit() {
