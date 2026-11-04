@@ -168,11 +168,11 @@
         <div class="fm-stamp" id="dash-stamp">— · Diperbarui otomatis</div>
       </div>
       <div class="fm-section-head"><h2>Ringkasan <span id="dash-periode-label">Bulan ini</span></h2>
-        <div class="fm-period-toggle" role="group" aria-label="Periode dashboard">
+        <div class="seg-period fm-period-toggle" role="group" aria-label="Periode dashboard">
           <button type="button" data-periode="hari">Hari ini</button><button type="button" data-periode="bulan" class="active" aria-pressed="true">Bulan ini</button><button type="button" data-periode="kustom">Kustom</button>
         </div>
       </div>
-      <div class="fm-date-range" id="dash-range-wrap"><input type="date" id="dash-dari" aria-label="Tanggal mulai"><span>–</span><input type="date" id="dash-sampai" aria-label="Tanggal akhir"></div>
+      <p class="page-date fm-hidden" id="dash-tanggal">—</p><button id="dash-refresh" class="fm-hidden" type="button">Refresh</button><div id="dash-todo" class="fm-hidden"></div><span id="todo-count" class="fm-hidden">0</span><div class="fm-date-range" id="dash-range-wrap"><input type="date" id="dash-dari" aria-label="Tanggal mulai"><span>–</span><input type="date" id="dash-sampai" aria-label="Tanggal akhir"></div>
       <div class="fm-summary-grid">
         <article class="fm-stat"><div><span class="fm-stat-icon positive">↙</span>Pemasukan</div><b class="positive" id="card-masuk">—</b><small>Sudah diterima</small></article>
         <article class="fm-stat"><div><span class="fm-stat-icon neutral">↗</span>Pengeluaran</div><b id="card-keluar">—</b><small id="sub-keluar">Transaksi keluar</small></article>
