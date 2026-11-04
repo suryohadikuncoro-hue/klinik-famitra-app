@@ -146,29 +146,29 @@
     <div class="fm-mobile-head">
       <img src="/static/logo.jpeg" alt="Logo Fa-Mitra">
       <div class="fm-who"><small>Selamat datang kembali</small><b id="fm-user-name">Administrator</b></div>
-      <button class="fm-icon-btn" type="button" aria-label="Notifikasi" onclick="document.getElementById('mobile-more').showModal()">♧<i></i></button>
-      <button class="fm-icon-btn" type="button" aria-label="Pengaturan" onclick="document.getElementById('mobile-more').showModal()">⚙</button>
+      <button class="fm-icon-btn" type="button" aria-label="Notifikasi" onclick="document.getElementById('mobile-more').showModal()"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M6 16V11a6 6 0 0 1 12 0v5l2 2H4l2-2ZM10 21h4"/></svg><i></i></button>
+      <button class="fm-icon-btn" type="button" aria-label="Pengaturan" onclick="document.getElementById('mobile-more').showModal()"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6ZM19 12l2-1-2-4-2 1-2-1-.5-2.5h-4L9 7 7 8 5 7l-2 4 2 1-2 1 2 4 2-1 2 1 .5 2.5h4L15 17l2 1 2-4-2-1 2-1Z"/></svg></button>
     </div>
     <div class="fm-dashboard">
       <div class="fm-hero">
         <div class="fm-hero-inner">
           <div class="fm-hero-top"><span>Total dana klinik</span><div>
-            <button type="button" class="fm-chip fm-eye" id="fm-eye" aria-label="Sembunyikan saldo">◉</button>
-            <button type="button" class="fm-chip" id="fm-period">Bulan ini⌄</button>
+            <button type="button" class="fm-chip fm-eye" id="fm-eye" aria-label="Sembunyikan saldo" aria-pressed="false"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/></svg></button>
+            <button type="button" class="fm-chip" id="fm-period" aria-controls="dash-period-controls">Bulan ini<svg aria-hidden="true" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></svg></button>
           </div></div>
           <div class="fm-total" id="card-dana">—</div>
           <div class="fm-split" id="dana-bar"><span></span><span></span></div>
           <div class="fm-balance"><span>Kas tunai <b id="card-tunai">—</b></span><span>Rekening <b id="card-bank">—</b></span></div>
           <div class="fm-actions">
-            <button type="button" onclick="switchView('transaksi')">＋ Catat</button>
-            <button type="button" onclick="switchView('tagihan')">▤ Tagihan</button>
-            <button type="button" onclick="switchView('laporan')">▥ Laporan</button>
+            <button type="button" onclick="switchView('transaksi')"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>Catat</button>
+            <button type="button" onclick="switchView('tagihan')"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M6 3h12v18l-3-2-3 2-3-2-3 2V3ZM9 8h6m-6 4h6"/></svg>Tagihan</button>
+            <button type="button" onclick="switchView('laporan')"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M5 20V11M12 20V4M19 20v-6M3 20h18"/></svg>Laporan</button>
           </div>
         </div>
         <div class="fm-stamp" id="dash-stamp">— · Diperbarui otomatis</div>
       </div>
       <div class="fm-section-head"><h2>Ringkasan <span id="dash-periode-label">Bulan ini</span></h2>
-        <div class="seg-period fm-period-toggle" role="group" aria-label="Periode dashboard">
+        <div id="dash-period-controls" class="seg-period fm-period-toggle" role="group" aria-label="Periode dashboard">
           <button type="button" data-periode="hari">Hari ini</button><button type="button" data-periode="bulan" class="active" aria-pressed="true">Bulan ini</button><button type="button" data-periode="kustom">Kustom</button>
         </div>
       </div>

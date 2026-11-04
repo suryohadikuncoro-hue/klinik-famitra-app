@@ -836,7 +836,8 @@ h3 { font-size: 14px; font-weight: 650; letter-spacing: -.15px; }
 .fm-hero-inner{padding:18px;border-radius:23px;color:#fff;background:linear-gradient(135deg,#c8262b,#db3a3e)}
 .fm-hero-top{display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:13px;font-weight:650}
 .fm-hero-top>div{display:flex;align-items:center;gap:6px}
-.fm-chip{height:30px;padding:0 10px;border-radius:16px;background:#ffffff45;color:#fff;font-size:12px;font-weight:650}
+.fm-chip{height:30px;padding:0 10px;border-radius:16px;background:#ffffff45;color:#fff;font-size:12px;font-weight:650;display:inline-flex;align-items:center;justify-content:center;gap:6px}
+.fm-chip svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
 .fm-eye{width:34px;padding:0;font-size:15px}
 .fm-total{font-size:32px;line-height:1.15;font-weight:800;letter-spacing:-.03em;margin:12px 0 14px;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
 .fm-split{display:flex;gap:3px;height:8px;margin-bottom:7px;border-radius:4px;overflow:hidden}
@@ -845,11 +846,13 @@ h3 { font-size: 14px; font-weight: 650; letter-spacing: -.15px; }
 .fm-balance span{display:flex;flex-direction:column;gap:2px}.fm-balance b{font-size:12px}
 .fm-actions{display:flex;gap:8px}
 .fm-actions button{height:43px;flex:1;min-width:0;border-radius:22px;background:#fffffff0;color:#4a1416;font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center;gap:5px;padding:0 4px}
+.fm-actions button svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
 .fm-stamp{text-align:center;padding:9px 6px 3px;font-size:10px;letter-spacing:.04em;color:#6e6766}
 .fm-period-toggle{display:flex;padding:3px;gap:3px;background:#eae5e2;border-radius:13px;max-width:100%;overflow-x:auto}
 .fm-period-toggle button{height:32px;padding:0 9px;border:0;border-radius:10px;background:transparent;color:#6e6966;font-size:11px;font-weight:650;white-space:nowrap}
 .fm-period-toggle button.active{background:#fff;color:#a92529;box-shadow:0 1px 3px #00000012}
-.fm-date-range{display:flex;align-items:center;gap:7px;padding:0 12px;height:42px;border:1px solid #eae5e2;background:#fff;border-radius:13px;margin:0 0 10px}
+.fm-date-range{display:none;align-items:center;gap:7px;padding:0 12px;height:42px;border:1px solid #eae5e2;background:#fff;border-radius:13px;margin:0 0 10px}
+.fm-date-range.is-visible{display:flex}
 .fm-date-range input{width:50%;min-width:0;border:0;background:transparent;padding:0;font-size:12px;color:var(--text)}
 .fm-date-range span{color:var(--muted)}
 .fm-summary-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
@@ -890,6 +893,7 @@ h3 { font-size: 14px; font-weight: 650; letter-spacing: -.15px; }
  .fm-mobile-head>img{width:42px;height:42px;border-radius:50%;object-fit:contain;background:#fff;border:2px solid #fff}
  .fm-who{flex:1;min-width:0}.fm-who small{display:block;font-size:11px;color:var(--muted)}.fm-who b{font-size:15px;font-weight:750}
  .fm-icon-btn{width:40px;height:40px;border-radius:50%;background:#fff;display:grid;place-items:center;position:relative;color:#363533;font-size:17px}
+ .fm-icon-btn svg{width:19px;height:19px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
  .fm-icon-btn i{position:absolute;top:9px;right:9px;width:7px;height:7px;border-radius:50%;background:#e5484d}
  .fm-dashboard .fm-section-head{margin:20px 4px 10px;flex-wrap:wrap}
  .fm-dashboard .fm-section-head h2{font-size:15px}

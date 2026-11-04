@@ -12,6 +12,8 @@ let MASTER = { unit_layanan: [], sumber_bayar: [], kategori_keluar: [], metode_b
 let currentView = 'dashboard';
 let AUTH_TOKEN = localStorage.getItem('kfm_token') || '';
 let CURRENT_USER = null;
+let dashboardHideBalance = false;
+const dashboardMoney = {};
 
 function showLogin() {
   $('login-screen').classList.remove('hidden');
@@ -101,6 +103,19 @@ $('mobile-more').addEventListener('close', () => {
   $('mobile-more-toggle').setAttribute('aria-expanded', 'false');
   $('mobile-more-toggle').focus();
 });
+$('fm-eye').addEventListener('click', () => {
+  dashboardHideBalance = !dashboardHideBalance;
+  $('fm-eye').setAttribute('aria-pressed', dashboardHideBalance ? 'true' : 'false');
+  $('fm-eye').setAttribute('aria-label', dashboardHideBalance ? 'Tampilkan saldo' : 'Sembunyikan saldo');
+  ['card-dana', 'card-tunai', 'card-bank'].forEach((id) => {
+    if (dashboardMoney[id] != null) $(id).textContent = dashboardHideBalance ? 'Rp••••••' : rupiah(dashboardMoney[id]);
+  });
+});
+$('fm-period').addEventListener('click', () => {
+  const controls = $('dash-period-controls');
+  controls?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  controls?.querySelector('.active')?.focus({ preventScroll: true });
+});
 // Native dialog traps focus; dismiss it when returning to the desktop layout.
 globalThis.matchMedia?.('(max-width: 767px)').addEventListener('change', closeMobileMore);
 
@@ -185,6 +200,11 @@ function renderLaporanSub(name) {
   if (name === 'modal') renderModal();
 }
 
+function setDashboardMoney(id, value) {
+  dashboardMoney[id] = Number(value) || 0;
+  $(id).textContent = dashboardHideBalance ? 'Rp••••••' : rupiah(dashboardMoney[id]);
+}
+
 // ---------- dashboard ----------
 async function renderDashboard() {
   const dari = $('dash-dari').value || '';
@@ -207,8 +227,8 @@ async function renderDashboard() {
     return;
   }
 
-  $('card-tunai').textContent = rupiah(d.kas_tunai);
-  $('card-bank').textContent = rupiah(d.saldo_bank);
+  setDashboardMoney('card-tunai', d.kas_tunai);
+  setDashboardMoney('card-bank', d.saldo_bank);
   $('card-masuk').textContent = rupiah(d.masuk);
   $('card-keluar').textContent = rupiah(d.keluar);
   $('card-piutang').textContent = rupiah(d.piutang_bpjs);
@@ -216,7 +236,7 @@ async function renderDashboard() {
   $('card-laba').textContent = rupiah(d.laba_akrual);
 
   const dana = (Number(d.kas_tunai) || 0) + (Number(d.saldo_bank) || 0);
-  $('card-dana').textContent = rupiah(dana);
+  setDashboardMoney('card-dana', dana);
   $('dash-stamp').textContent = 'per ' + tanggalPendek(sampai || todayStr);
 
   // Porsi kas tunai vs rekening (dijaga tidak negatif)
@@ -1317,6 +1337,7 @@ function setPeriodeAktif(mode) {
     b.classList.toggle('active', on);
     b.setAttribute('aria-pressed', on ? 'true' : 'false');
   });
+  $('dash-range-wrap')?.classList.toggle('is-visible', mode === 'kustom');
 }
 document.querySelectorAll('.seg-period [data-periode]').forEach((b) => {
   b.addEventListener('click', () => {
@@ -1328,6 +1349,7 @@ document.querySelectorAll('.seg-period [data-periode]').forEach((b) => {
     renderDashboard();
   });
 });
+setPeriodeAktif('bulan');
 
 // Tab pengelompokan pemasukan: Unit layanan / Sumber bayar / Metode bayar
 document.querySelectorAll('[data-rekap]').forEach((b) => {
