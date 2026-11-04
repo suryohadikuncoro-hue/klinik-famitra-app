@@ -822,3 +822,13 @@ h3 { font-size: 14px; font-weight: 650; letter-spacing: -.15px; }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; }
 }
+
+
+/* Mobile dashboard uses the supplied Fa-Mitra mockup; desktop remains unchanged. */
+.dashboard-mobile-reference { display:none; }
+@media (max-width: 767px) {
+  body:has(#view-dashboard.active) .tabbar { display:none; }
+  #view-dashboard { margin: -18px -16px -32px; min-height: calc(100dvh - 72px); }
+  #view-dashboard .dashboard-desktop-original { display:none; }
+  #view-dashboard .dashboard-mobile-reference { display:block; width:100%; height:calc(100dvh - 72px); min-height:780px; border:0; background:#f3f1f0; }
+}
