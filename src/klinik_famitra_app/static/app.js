@@ -192,7 +192,20 @@ async function renderDashboard() {
   const q = new URLSearchParams();
   if (dari) q.set('dari', dari);
   if (sampai) q.set('sampai', sampai);
-  const d = await api('/api/laporan?' + q.toString());
+
+  // Judul periode & tanggal hari ini (format lokal, bukan UTC)
+  $('dash-tanggal').textContent = tanggalPanjang(sampai || todayStr);
+  $('dash-periode-label').textContent = rentangPeriode(dari, sampai);
+
+  let d;
+  try {
+    d = await api('/api/laporan?' + q.toString());
+  } catch (e) {
+    ['card-dana', 'card-tunai', 'card-bank', 'card-masuk', 'card-keluar',
+      'card-piutang', 'card-piutang-pasien', 'card-laba'].forEach((id) => { $(id).textContent = '—'; });
+    $('dash-todo').innerHTML = '<p class="empty-state">Data gagal dimuat. Periksa koneksi lalu tekan Muat ulang.</p>';
+    return;
+  }
 
   $('card-tunai').textContent = rupiah(d.kas_tunai);
   $('card-bank').textContent = rupiah(d.saldo_bank);
@@ -202,44 +215,175 @@ async function renderDashboard() {
   $('card-piutang-pasien').textContent = rupiah(d.piutang_pasien);
   $('card-laba').textContent = rupiah(d.laba_akrual);
 
-  // KPI dinamis: porsi kas vs rekening, margin laba, realisasi kas
   const dana = (Number(d.kas_tunai) || 0) + (Number(d.saldo_bank) || 0);
   $('card-dana').textContent = rupiah(dana);
-  const pctKas = dana > 0 ? Math.round((d.kas_tunai / dana) * 100) : 0;
-  $('sub-tunai').textContent = dana > 0 ? pctKas + '% dari total dana ' + rupiah(dana) : 'saldo berjalan';
-  $('bar-kas').style.width = (dana > 0 ? Math.max(0, Math.min(100, (d.kas_tunai / dana) * 100)) : 0) + '%';
-  $('bar-bank').style.width = (dana > 0 ? Math.max(0, Math.min(100, (d.saldo_bank / dana) * 100)) : 0) + '%';
+  $('dash-stamp').textContent = 'per ' + tanggalPendek(sampai || todayStr);
+
+  // Porsi kas tunai vs rekening (dijaga tidak negatif)
+  const kasPos = Math.max(0, Number(d.kas_tunai) || 0);
+  const bankPos = Math.max(0, Number(d.saldo_bank) || 0);
+  const base = kasPos + bankPos;
+  const bar = $('dana-bar');
+  if (bar.children.length === 2) {
+    bar.children[0].style.flex = (base > 0 ? kasPos : 1) + ' 1 0';
+    bar.children[1].style.flex = (base > 0 ? bankPos : 1) + ' 1 0';
+  }
+  bar.setAttribute('aria-label', base > 0
+    ? 'Kas tunai ' + Math.round((kasPos / base) * 100) + ' persen, rekening ' + Math.round((bankPos / base) * 100) + ' persen'
+    : 'Belum ada saldo');
+
   const pendapatan = d.pendapatan_akrual != null
     ? d.pendapatan_akrual
-    // cadangan bila server lama: kas non-BPJS + klaim BPJS periode + piutang pasien
     : (d.masuk || 0) - (d.masuk_klaim_bpjs || 0) + (d.bpjs_periode || d.piutang_bpjs_periode || 0) + (d.piutang_pasien_periode || 0);
-  $('chip-margin').textContent = 'margin ' + (pendapatan > 0 ? Math.round((d.laba_akrual / pendapatan) * 100) : 0) + '%';
-  $('chip-realisasi').textContent = 'kas ' + (pendapatan > 0 ? Math.round((d.masuk / pendapatan) * 100) : 100) + '%';
+  const margin = pendapatan > 0 ? Math.round((d.laba_akrual / pendapatan) * 100) : 0;
+  const piutangPeriode = (Number(d.bpjs_periode) || 0) + (Number(d.piutang_pasien_periode) || 0);
+  $('sub-keluar').textContent = 'keluar dari kas & rekening';
+  $('sub-laba').textContent = 'margin ' + margin + '%' + (piutangPeriode > 0 ? ', termasuk piutang ' + shortRp(piutangPeriode) : '');
 
   const metodeRows = (d.per_metode || []).map((r) => ({
-    nama: r.nama + ' · ' + (r.jenis_dana === 'kas' ? 'tunai' : 'rekening'),
-    total: r.total,
+    nama: r.nama, jenis_dana: r.jenis_dana, total: r.total,
   }));
-  renderRekap('rekap-metode', metodeRows);
-  renderRekap('rekap-unit', d.per_unit);
-  renderRekap('rekap-sumber', d.per_sumber);
-  renderRekap('rekap-kategori', d.per_kategori);
-  await Promise.all([renderCharts(d), renderRecentTransactions(q)]);
+  renderBarList('rekap-utama', d.per_unit, d);
+  renderBarList('rekap-sumber', d.per_sumber, d, true);
+  renderBarList('rekap-metode', metodeRows, d, true);
+  renderBarList('rekap-kategori', d.per_kategori, d, true, true);
+
+  await Promise.all([renderCharts(d), renderRecentTransactions(q), renderTodo()]);
+}
+
+// Label tanggal lokal: "Senin, 2 November 2026"
+function tanggalPanjang(iso) {
+  const dt = parseLokal(iso);
+  if (!dt) return '—';
+  return dt.toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+}
+function tanggalPendek(iso) {
+  const dt = parseLokal(iso);
+  if (!dt) return '—';
+  return dt.getDate() + ' ' + dt.toLocaleDateString('id-ID', { month: 'short' });
+}
+function parseLokal(iso) {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(iso || ''));
+  if (!m) return null;
+  return new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
+}
+function rentangPeriode(dari, sampai) {
+  const a = parseLokal(dari), b = parseLokal(sampai);
+  if (!a || !b) return '—';
+  const opsi = { day: 'numeric', month: 'long', year: 'numeric' };
+  if (dari === sampai) return b.toLocaleDateString('id-ID', opsi);
+  if (a.getMonth() === b.getMonth() && a.getFullYear() === b.getFullYear()) {
+    return a.getDate() + '–' + b.toLocaleDateString('id-ID', opsi);
+  }
+  return a.toLocaleDateString('id-ID', opsi) + ' – ' + b.toLocaleDateString('id-ID', opsi);
+}
+
+// Daftar bar: nama + nilai + porsi bar terhadap nilai terbesar
+function renderBarList(elId, rows, d, pakaiJenisDana, modeKeluar) {
+  const el = $(elId);
+  if (!el) return;
+  if (!rows || rows.length === 0) {
+    el.innerHTML = '<p class="empty-state">Belum ada data pada periode ini</p>';
+    return;
+  }
+  const max = Math.max(...rows.map((r) => Number(r.total) || 0), 1);
+  const total = rows.reduce((s, r) => s + (Number(r.total) || 0), 0);
+  el.classList.toggle('out', !!modeKeluar);
+  el.innerHTML = rows.map((r) => {
+    const v = Number(r.total) || 0;
+    const nama = pakaiJenisDana && r.jenis_dana
+      ? esc(r.nama) + ' · ' + (r.jenis_dana === 'kas' ? 'tunai' : 'rekening')
+      : esc(r.nama);
+    const share = total > 0 ? Math.round((v / total) * 100) + '%' : '0%';
+    return '<div class="bar-item"><div class="bar-head"><span>' + nama + '</span>' +
+      '<span><b class="bar-val">' + rupiah(v) + '</b><span class="bar-share">' + share + '</span></span></div>' +
+      '<div class="bar-track"><div class="bar-fill" style="width:' +
+      Math.max(2, Math.round((v / max) * 100)) + '%"></div></div></div>';
+  }).join('');
+}
+
+// Perlu ditindaklanjuti: klaim BPJS diajukan + tagihan pasien belum lunas
+async function renderTodo() {
+  const box = $('dash-todo');
+  const badge = $('todo-count');
+  box.innerHTML = '<p class="empty-state">Memuat…</p>';
+  let klaim = [], tagihan = [];
+  try {
+    const hasil = await Promise.all([api('/api/klaim'), api('/api/tagihan')]);
+    klaim = hasil[0] || [];
+    tagihan = hasil[1] || [];
+  } catch (e) {
+    box.innerHTML = '<p class="empty-state">Daftar tindak lanjut tidak dapat dimuat. Coba muat ulang.</p>';
+    badge.textContent = '0';
+    return;
+  }
+  const piutangKlaim = klaim.filter((k) => k.status !== 'cair');
+  const belumLunas = tagihan.filter((t) => (Number(t.sisa) || 0) > 0);
+  const total = piutangKlaim.length + belumLunas.length;
+  badge.textContent = String(total);
+  if (total === 0) {
+    box.innerHTML = '<p class="empty-state">Tidak ada yang perlu ditindaklanjuti. Semua klaim cair dan tagihan lunas.</p>';
+    return;
+  }
+  let html = '';
+  piutangKlaim.slice(0, 2).forEach((k) => {
+    const umur = selisihHari(k.tanggal_ajuan);
+    html += '<div class="todo-row"><div class="todo-info">' +
+      '<span class="todo-title">Klaim BPJS ' + esc(k.periode || '') + '</span>' +
+      '<span class="todo-meta">' + esc(k.sumber || 'BPJS') + (umur != null ? ' · diajukan ' + tanggalPendek(k.tanggal_ajuan) + ', ' + umur + ' hari' : '') + '</span>' +
+      '<span class="todo-amount">' + rupiah(k.jumlah) + '</span></div>' +
+      '<button type="button" class="btn-outline" onclick="switchView(\'tagihan\')">Tandai cair</button></div>';
+  });
+  belumLunas.slice(0, 2).forEach((t) => {
+    html += '<div class="todo-row"><div class="todo-info">' +
+      '<span class="todo-title">Tagihan ' + esc(t.pasien || 'pasien') + '</span>' +
+      '<span class="todo-meta">' + esc(t.unit || 'Tagihan') + ' · terbayar ' + rupiah((Number(t.total) || 0) - (Number(t.sisa) || 0)) + ' dari ' + rupiah(t.total) + '</span>' +
+      '<span class="todo-amount">Sisa ' + rupiah(t.sisa) + '</span></div>' +
+      '<button type="button" class="btn-outline" onclick="switchView(\'tagihan\')">Catat bayar</button></div>';
+  });
+  const sisa = total - Math.min(2, piutangKlaim.length) - Math.min(2, belumLunas.length);
+  if (sisa > 0) {
+    const sisaRp = belumLunas.slice(2).reduce((s, t) => s + (Number(t.sisa) || 0), 0)
+      + piutangKlaim.slice(2).reduce((s, k) => s + (Number(k.jumlah) || 0), 0);
+    html += '<div class="todo-row"><div class="todo-info">' +
+      '<span class="todo-title">' + sisa + ' item lain belum selesai</span>' +
+      (sisaRp > 0 ? '<span class="todo-amount">Total ' + rupiah(sisaRp) + '</span>' : '') +
+      '</div><button type="button" class="btn-outline" onclick="switchView(\'tagihan\')">Lihat semua</button></div>';
+  }
+  box.innerHTML = html;
+}
+
+function selisihHari(iso) {
+  const a = parseLokal(iso);
+  if (!a) return null;
+  const b = parseLokal(todayStr);
+  const hari = Math.round((b - a) / 86400000);
+  return hari >= 0 ? hari : 0;
 }
 
 async function renderRecentTransactions(query) {
   const el = $('dashboard-recent');
   el.innerHTML = '<li class="empty-state">Memuat transaksi…</li>';
+  const IN = 'M17 7 7 17M7 8v9h9';
+  const OUT = 'M7 17 17 7M8 7h9v9';
   try {
     const rows = await api('/api/transaksi?' + query.toString());
     // Endpoint mengurutkan tanggal DESC, id DESC; jangan tampilkan identitas pasien di ringkasan.
     el.innerHTML = rows.slice(0, 5).map((t) => {
       const masuk = t.jenis === 'masuk';
       const label = masuk ? (t.unit || 'Pemasukan') : (t.kategori || 'Pengeluaran');
-      return '<li class="recent-row ' + (masuk ? 'masuk' : 'keluar') + '"><span class="recent-icon" aria-hidden="true">' +
-        (masuk ? '↙' : '↗') + '</span><div><span class="recent-title">' + esc(label) + '</span>' +
-        '<span class="recent-meta">' + esc(t.tanggal) + (t.metode ? ' · ' + esc(t.metode) : '') + '</span>' +
-        '<span class="recent-amount">' + (masuk ? '+' : '−') + rupiah(t.jumlah) + '</span></div></li>';
+      const meta = [
+        t.sumber || (masuk ? '' : (t.unit || 'Beban bersama')),
+        tanggalPendek(t.tanggal),
+        t.dicatat_oleh || '',
+      ].filter(Boolean).map(esc).join(' · ');
+      return '<li class="tx-row"><span class="tx-icon ' + (masuk ? 'in' : 'out') + '" aria-hidden="true">' +
+        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="' +
+        (masuk ? IN : OUT) + '"/></svg></span>' +
+        '<div class="tx-main"><span class="tx-title">' + esc(label) + '</span>' +
+        '<span class="tx-meta">' + meta + (t.keterangan ? ' · ' + esc(t.keterangan) : '') + '</span></div>' +
+        '<span class="tx-method">' + esc(t.metode || (masuk ? '—' : 'Kas/Rekening')) + '</span>' +
+        '<span class="tx-amount ' + (masuk ? 'in' : '') + '">' + (masuk ? '+' : '−') + rupiah(t.jumlah) + '</span></li>';
     }).join('') || '<li class="empty-state">Belum ada transaksi pada periode ini</li>';
   } catch (e) {
     el.innerHTML = '<li class="empty-state">Transaksi belum dapat dimuat. Coba muat ulang.</li>';
@@ -1161,7 +1305,45 @@ $('nc-per').value = todayStr;
 $('kj-tanggal').value = todayStr;
 $('kj-filter').value = todayStr;
 
-['dash-dari', 'dash-sampai'].forEach((id) => $(id).addEventListener('change', renderDashboard));
+['dash-dari', 'dash-sampai'].forEach((id) => $(id).addEventListener('change', () => {
+  setPeriodeAktif('kustom');
+  renderDashboard();
+}));
+
+// Periode cepat: Hari ini / Bulan ini / Kustom
+function setPeriodeAktif(mode) {
+  document.querySelectorAll('.seg-period [data-periode]').forEach((b) => {
+    const on = b.dataset.periode === mode;
+    b.classList.toggle('active', on);
+    b.setAttribute('aria-pressed', on ? 'true' : 'false');
+  });
+}
+document.querySelectorAll('.seg-period [data-periode]').forEach((b) => {
+  b.addEventListener('click', () => {
+    const mode = b.dataset.periode;
+    setPeriodeAktif(mode);
+    if (mode === 'hari') { $('dash-dari').value = todayStr; $('dash-sampai').value = todayStr; }
+    if (mode === 'bulan') { $('dash-dari').value = monthStart; $('dash-sampai').value = todayStr; }
+    if (mode === 'kustom') { const el = $('dash-dari'); if (el && el.focus) el.focus(); return; }
+    renderDashboard();
+  });
+});
+
+// Tab pengelompokan pemasukan: Unit layanan / Sumber bayar / Metode bayar
+document.querySelectorAll('[data-rekap]').forEach((b) => {
+  b.addEventListener('click', () => {
+    document.querySelectorAll('[data-rekap]').forEach((x) => {
+      const on = x === b;
+      x.classList.toggle('active', on);
+      x.setAttribute('aria-selected', on ? 'true' : 'false');
+    });
+    const map = { unit: 'rekap-utama', sumber: 'rekap-sumber', metode: 'rekap-metode' };
+    Object.entries(map).forEach(([k, id]) => {
+      const el = $(id);
+      if (el) el.classList.toggle('hidden', k !== b.dataset.rekap);
+    });
+  });
+});
 ['tr-dari', 'tr-sampai'].forEach((id) => $(id).addEventListener('change', renderTransaksi));
 ['lu-dari', 'lu-sampai'].forEach((id) => $(id).addEventListener('change', renderPerUnit));
 $('nc-per').addEventListener('change', renderNeraca);
