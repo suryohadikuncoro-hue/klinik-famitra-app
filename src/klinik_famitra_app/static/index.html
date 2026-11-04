@@ -143,152 +143,50 @@
 <main>
   <!-- DASHBOARD -->
   <section id="view-dashboard" class="view active">
-    <div class="page-head">
-      <div>
-        <p class="page-date" id="dash-tanggal">—</p>
-        <h1>Ringkasan keuangan</h1>
-      </div>
-      <div class="page-head-actions">
-        <div class="seg-period" role="group" aria-label="Periode">
-          <button type="button" data-periode="hari">Hari ini</button>
-          <button type="button" data-periode="bulan" class="active" aria-pressed="true">Bulan ini</button>
-          <button type="button" data-periode="kustom">Kustom</button>
-        </div>
-        <div class="date-range" id="dash-range-wrap">
-          <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 5h14a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1zM4 10h16M8 3v4M16 3v4"/></svg>
-          <input type="date" id="dash-dari" aria-label="Tanggal mulai dashboard">
-          <span>–</span>
-          <input type="date" id="dash-sampai" aria-label="Tanggal akhir dashboard">
-        </div>
-        <button type="button" class="btn-cta" onclick="switchView('transaksi')">
-          <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
-          Catat transaksi
-        </button>
-      </div>
+    <div class="fm-mobile-head">
+      <img src="/static/logo.jpeg" alt="Logo Fa-Mitra">
+      <div class="fm-who"><small>Selamat datang kembali</small><b id="fm-user-name">Administrator</b></div>
+      <button class="fm-icon-btn" type="button" aria-label="Notifikasi" onclick="showToast('Belum ada notifikasi baru')">♧<i></i></button>
+      <button class="fm-icon-btn" type="button" aria-label="Pengaturan" onclick="switchView('pengaturan')">⚙</button>
     </div>
-
-    <!-- BARIS 1: total dana + periode -->
-    <section class="dash-row" aria-label="Angka utama">
-      <article class="card card-dana">
-        <div class="card-top">
-          <span class="card-label-light">Total dana</span>
-          <span class="card-stamp" id="dash-stamp">saldo berjalan</span>
-        </div>
-        <div class="dana-value" id="card-dana">—</div>
-        <div class="dana-bar" role="img" aria-label="Porsi kas tunai dan rekening" id="dana-bar">
-          <span style="flex:1 1 0;background:#fff"></span>
-          <span style="flex:1 1 0;background:#f28b8b"></span>
-        </div>
-        <div class="dana-legend">
-          <div><span class="dot" style="background:#fff"></span>Kas tunai<b id="card-tunai">—</b></div>
-          <div><span class="dot" style="background:#f28b8b"></span>Rekening<b id="card-bank">—</b></div>
-        </div>
-      </article>
-
-      <article class="card card-periode">
-        <div class="card-top">
-          <span class="card-label">Periode <b id="dash-periode-label">—</b></span>
-          <button type="button" class="btn-ghost" id="dash-refresh">
-            <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 11a8 8 0 0 0-14.5-4.2L4 9M4 4v5h5M4 13a8 8 0 0 0 14.5 4.2L20 15M20 20v-5h-5"/></svg>
-            Muat ulang
-          </button>
-        </div>
-        <div class="periode-grid">
-          <div class="periode-cell">
-            <span class="periode-name"><span class="periode-icon in"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 7 7 17M7 8v9h9"/></svg></span>Pemasukan</span>
-            <span class="periode-value in" id="card-masuk">—</span>
-            <span class="periode-note">uang yang sudah diterima</span>
-          </div>
-          <div class="periode-cell border">
-            <span class="periode-name"><span class="periode-icon out"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 17 17 7M8 7h9v9"/></svg></span>Pengeluaran</span>
-            <span class="periode-value" id="card-keluar">—</span>
-            <span class="periode-note" id="sub-keluar">transaksi keluar</span>
-          </div>
-          <div class="periode-cell border">
-            <span class="periode-name"><span class="periode-icon brand"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17l6-6 4 4 8-8M15 7h6v6"/></svg></span>Laba akrual</span>
-            <span class="periode-value" id="card-laba">—</span>
-            <span class="periode-note" id="sub-laba">termasuk piutang</span>
+    <div class="fm-dashboard">
+      <div class="fm-hero">
+        <div class="fm-hero-inner">
+          <div class="fm-hero-top"><span>Total dana klinik</span><div>
+            <button type="button" class="fm-chip fm-eye" id="fm-eye" aria-label="Sembunyikan saldo">◉</button>
+            <button type="button" class="fm-chip" id="fm-period">Bulan ini⌄</button>
+          </div></div>
+          <div class="fm-total" id="card-dana">—</div>
+          <div class="fm-split" id="dana-bar"><span></span><span></span></div>
+          <div class="fm-balance"><span>Kas tunai <b id="card-tunai">—</b></span><span>Rekening <b id="card-bank">—</b></span></div>
+          <div class="fm-actions">
+            <button type="button" onclick="switchView('transaksi')">＋ Catat</button>
+            <button type="button" onclick="switchView('tagihan')">▤ Tagihan</button>
+            <button type="button" onclick="switchView('laporan')">▥ Laporan</button>
           </div>
         </div>
-      </article>
-    </section>
-
-    <!-- BARIS 2: grafik + tindak lanjut -->
-    <section class="dash-row">
-      <article class="card span-7">
-        <div class="card-top">
-          <div>
-            <h2 class="card-title">Arus kas 30 hari terakhir</h2>
-            <p class="card-sub">Uang masuk dan keluar per hari</p>
-          </div>
-          <div class="chart-legend">
-            <span><svg width="28" height="8" aria-hidden="true"><line x1="0" y1="4" x2="28" y2="4" stroke="var(--income)" stroke-width="3" stroke-linecap="round"/></svg>Masuk</span>
-            <span><svg width="28" height="8" aria-hidden="true"><line x1="0" y1="4" x2="28" y2="4" stroke="#3a3a3a" stroke-width="3" stroke-linecap="round" stroke-dasharray="6 5"/></svg>Keluar</span>
-          </div>
+        <div class="fm-stamp" id="dash-stamp">— · Diperbarui otomatis</div>
+      </div>
+      <div class="fm-section-head"><h2>Ringkasan <span id="dash-periode-label">Bulan ini</span></h2>
+        <div class="fm-period-toggle" role="group" aria-label="Periode dashboard">
+          <button type="button" data-periode="hari">Hari ini</button><button type="button" data-periode="bulan" class="active" aria-pressed="true">Bulan ini</button><button type="button" data-periode="kustom">Kustom</button>
         </div>
-        <div id="chart-tren" class="chart-box"><p class="empty-state">Grafik akan tampil setelah data dimuat.</p></div>
-        <p class="card-sub">Grafik menampilkan 30 hari terakhir hingga tanggal akhir periode.</p>
-      </article>
-
-      <article class="card span-5">
-        <div class="card-top">
-          <h2 class="card-title">Perlu ditindaklanjuti</h2>
-          <span class="badge-count" id="todo-count">0</span>
-        </div>
-        <div class="todo-list" id="dash-todo">
-          <p class="empty-state">Memuat…</p>
-        </div>
-      </article>
-    </section>
-
-    <!-- BARIS 3: rekap pemasukan + pengeluaran -->
-    <section class="dash-row">
-      <article class="card span-7">
-        <div class="card-top">
-          <h2 class="card-title">Pemasukan berdasarkan</h2>
-          <div class="seg-tabs" role="tablist" aria-label="Kelompokkan pemasukan">
-            <button type="button" role="tab" data-rekap="unit" aria-selected="true" class="active">Unit layanan</button>
-            <button type="button" role="tab" data-rekap="sumber" aria-selected="false">Sumber bayar</button>
-            <button type="button" role="tab" data-rekap="metode" aria-selected="false">Metode bayar</button>
-          </div>
-        </div>
-        <div id="rekap-utama" class="bar-list"><p class="empty-state">Menunggu data</p></div>
-        <div id="rekap-unit" class="rekap hidden"><p class="empty-state">Menunggu data</p></div>
-        <div id="rekap-sumber" class="rekap hidden"><p class="empty-state">Menunggu data</p></div>
-        <div id="rekap-metode" class="rekap hidden"><p class="empty-state">Menunggu data</p></div>
-      </article>
-
-      <article class="card span-5">
-        <h2 class="card-title">Pengeluaran per kategori</h2>
-        <div id="rekap-kategori" class="bar-list"><p class="empty-state">Menunggu data</p></div>
-      </article>
-    </section>
-
-    <!-- BARIS 4: transaksi terakhir + piutang -->
-    <section class="dash-row">
-      <article class="card span-8">
-        <div class="card-top">
-          <h2 class="card-title">Transaksi terakhir</h2>
-          <button type="button" class="text-link" onclick="switchView('transaksi')">Lihat semua <span aria-hidden="true">›</span></button>
-        </div>
-        <ul id="dashboard-recent" class="tx-list"><li class="empty-state">Transaksi akan tampil setelah data dimuat.</li></ul>
-      </article>
-
-      <article class="card span-4">
-        <h2 class="card-title">Piutang klinik</h2>
-        <div class="piutang-row">
-          <span class="piutang-icon">B</span>
-          <div><span class="card-sub">Piutang BPJS</span><b id="card-piutang">—</b><p class="card-sub">Klaim belum cair</p></div>
-        </div>
-        <div class="piutang-row">
-          <span class="piutang-icon teal">P</span>
-          <div><span class="card-sub">Piutang pasien</span><b id="card-piutang-pasien">—</b><p class="card-sub">Tagihan belum lunas</p></div>
-        </div>
-        <button type="button" class="btn-outline" onclick="switchView('tagihan')">Buka tagihan &amp; klaim</button>
-      </article>
-    </section>
-
-    <p class="hint" id="dash-hint">Kas tunai &amp; saldo rekening = saldo berjalan (termasuk saldo awal/modal). Masuk/Keluar mengikuti filter tanggal.</p>
+      </div>
+      <div class="fm-date-range" id="dash-range-wrap"><input type="date" id="dash-dari" aria-label="Tanggal mulai"><span>–</span><input type="date" id="dash-sampai" aria-label="Tanggal akhir"></div>
+      <div class="fm-summary-grid">
+        <article class="fm-stat"><div><span class="fm-stat-icon positive">↙</span>Pemasukan</div><b class="positive" id="card-masuk">—</b><small>Sudah diterima</small></article>
+        <article class="fm-stat"><div><span class="fm-stat-icon neutral">↗</span>Pengeluaran</div><b id="card-keluar">—</b><small id="sub-keluar">Transaksi keluar</small></article>
+        <article class="fm-stat fm-stat-profit"><div><span class="fm-stat-icon brand">⌁</span>Laba akrual</div><b id="card-laba">—</b><small id="sub-laba">Termasuk piutang</small></article>
+      </div>
+      <div class="fm-section-head"><h2>Arus kas 30 hari</h2><span class="fm-muted">Masuk & keluar</span></div>
+      <article class="fm-card fm-chart-card"><div class="fm-chart-legend"><span><i class="fm-line-in"></i>Masuk</span><span><i class="fm-line-out"></i>Keluar</span></div><div id="chart-tren" class="chart-box"><p class="empty-state">Grafik akan tampil setelah data dimuat.</p></div><p class="fm-chart-note">30 hari terakhir hingga tanggal akhir periode.</p></article>
+      <div class="fm-section-head"><h2>Sumber pemasukan</h2><span class="fm-muted">Bulan ini</span></div>
+      <article class="fm-card"><div class="seg-tabs" role="tablist" aria-label="Kelompokkan pemasukan"><button type="button" role="tab" data-rekap="unit" aria-selected="true" class="active">Unit layanan</button><button type="button" role="tab" data-rekap="sumber" aria-selected="false">Sumber bayar</button><button type="button" role="tab" data-rekap="metode" aria-selected="false">Metode bayar</button></div><div id="rekap-utama" class="bar-list"><p class="empty-state">Menunggu data</p></div><div id="rekap-unit" class="rekap hidden"><p class="empty-state">Menunggu data</p></div><div id="rekap-sumber" class="rekap hidden"><p class="empty-state">Menunggu data</p></div><div id="rekap-metode" class="rekap hidden"><p class="empty-state">Menunggu data</p></div></article>
+      <div class="fm-section-head"><h2>Pengeluaran per kategori</h2></div><article class="fm-card"><div id="rekap-kategori" class="bar-list"><p class="empty-state">Menunggu data</p></div></article>
+      <div class="fm-section-head"><h2>Transaksi terakhir</h2><button type="button" class="fm-text-link" onclick="switchView('transaksi')">Lihat semua ›</button></div><article class="fm-card"><ul id="dashboard-recent" class="tx-list"><li class="empty-state">Transaksi akan tampil setelah data dimuat.</li></ul></article>
+      <div class="fm-section-head"><h2>Piutang klinik</h2><button type="button" class="fm-text-link" onclick="switchView('tagihan')">Lihat tagihan ›</button></div><article class="fm-card fm-debt"><div class="fm-debt-row"><span class="fm-debt-icon">B</span><div><small>Piutang BPJS</small><b id="card-piutang">—</b></div><span class="fm-debt-caption">Klaim belum cair</span></div><div class="fm-debt-row"><span class="fm-debt-icon patient">P</span><div><small>Piutang pasien</small><b id="card-piutang-pasien">—</b></div><span class="fm-debt-caption">Tagihan belum lunas</span></div></article>
+      <p class="fm-footnote" id="dash-hint">Saldo tunai & rekening adalah saldo berjalan. Pemasukan/pengeluaran mengikuti periode.</p>
+    </div>
   </section>
 
   <!-- TRANSAKSI -->
