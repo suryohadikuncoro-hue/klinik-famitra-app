@@ -215,7 +215,10 @@ async function renderDashboard() {
 
   // Judul periode & tanggal hari ini (format lokal, bukan UTC)
   $('dash-tanggal').textContent = tanggalPanjang(sampai || todayStr);
-  $('dash-periode-label').textContent = rentangPeriode(dari, sampai);
+  const periodeAktif = typeof document !== 'undefined' && document.querySelector('#dash-period-controls button.active');
+  const jenisPeriode = periodeAktif && periodeAktif.dataset.periode;
+  $('dash-periode-label').textContent = jenisPeriode === 'bulan' ? 'bulan ini'
+    : jenisPeriode === 'hari' ? 'hari ini' : rentangPeriode(dari, sampai);
 
   let d;
   try {
@@ -455,75 +458,99 @@ async function renderCharts(d) {
   drawDonut($('chart-donut'), $('donut-legend'), units, d.masuk);
 }
 
+// Ringkas angka ala mockup: 27,9 jt / 850 rb
+function ringkasRp(v) {
+  v = Number(v) || 0;
+  const a = Math.abs(v);
+  if (a >= 1e9) return (v / 1e9).toFixed(1).replace('.', ',') + ' M';
+  if (a >= 1e6) return (v / 1e6).toFixed(1).replace('.', ',') + ' jt';
+  if (a >= 1e3) return Math.round(v / 1e3) + ' rb';
+  return String(Math.round(v));
+}
+
 function drawArea(el, data) {
   if (!el) return;
   if (!data || data.length === 0) {
     el.innerHTML = '<div class="rekap-row empty">Belum ada transaksi</div>';
     return;
   }
-  const W = 640, H = 210, PL = 46, PR = 10, PT = 12, PB = 24;
+  const W = 340, H = 168, L = 16, R = 324, TOP = 14, BASE = 136;
   const n = data.length;
-  const max = niceMax(Math.max(1, ...data.map((x) => Math.max(x.masuk, x.keluar))));
-  const X = (i) => PL + (n <= 1 ? (W - PL - PR) / 2 : (i * (W - PL - PR)) / (n - 1));
-  const Y = (v) => H - PB - (v / max) * (H - PT - PB);
-  const path = (k) => data.map((x, i) => (i ? 'L' : 'M') + X(i).toFixed(1) + ',' + Y(x[k]).toFixed(1)).join(' ');
-  const area = (k) => path(k) + ' L' + X(n - 1).toFixed(1) + ',' + (H - PB) + ' L' + X(0).toFixed(1) + ',' + (H - PB) + ' Z';
-
-  let grid = '';
-  const ticks = 4;
-  for (let i = 0; i <= ticks; i++) {
-    const v = (max / ticks) * i;
-    const y = Y(v).toFixed(1);
-    grid += '<line x1="' + PL + '" y1="' + y + '" x2="' + (W - PR) + '" y2="' + y + '"/>';
-    grid += '<text x="' + (PL - 8) + '" y="' + (Number(y) + 3.5) + '" text-anchor="end">' + shortRp(v) + '</text>';
-  }
-
-  const step = Math.max(1, Math.ceil(n / 6));
-  let xlab = '';
+  const num = (v) => Number(v) || 0;
+  const max = niceMax(Math.max(1, ...data.map((x) => Math.max(num(x.masuk), num(x.keluar)))));
+  const X = (i) => L + (n <= 1 ? (R - L) / 2 : (i * (R - L)) / (n - 1));
+  const Y = (v) => BASE - (num(v) / max) * (BASE - TOP);
+  const f = (v) => v.toFixed(1);
+  const smooth = (k) => data.map((x, i) => {
+    if (!i) return 'M' + f(X(0)) + ',' + f(Y(x[k]));
+    const mx = f((X(i - 1) + X(i)) / 2);
+    return 'C' + mx + ',' + f(Y(data[i - 1][k])) + ' ' + mx + ',' + f(Y(x[k])) + ' ' + f(X(i)) + ',' + f(Y(x[k]));
+  }).join('');
   const chartDate = (iso) => {
     const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(iso || ''));
     if (!m) return '—';
     const dt = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
     return dt.getDate() + ' ' + dt.toLocaleDateString('id-ID', { month: 'short' });
   };
-  for (let i = 0; i < n; i += step) {
-    const t = data[i].tanggal;
-    xlab += '<text x="' + X(i).toFixed(1) + '" y="' + (H - 6) + '" text-anchor="middle">' + esc(chartDate(t)) + '</text>';
-  }
 
-  const totalIn = data.reduce((s, x) => s + (Number(x.masuk) || 0), 0);
-  const totalOut = data.reduce((s, x) => s + (Number(x.keluar) || 0), 0);
+  let grid = '';
+  [0, 0.5, 1].forEach((p, gi) => {
+    const y = f(Y(max * p));
+    grid += '<line x1="' + L + '" x2="' + R + '" y1="' + y + '" y2="' + y + '"' + (gi ? ' stroke-dasharray="2 4"' : '') + '/>';
+  });
+
+  const marks = n <= 4 ? data.map((_, i) => i)
+    : [...new Set([0, Math.round((n - 1) / 3), Math.round((2 * (n - 1)) / 3), n - 1])];
+  const xlab = marks.map((i) => {
+    const anchor = i === 0 ? 'start' : i === n - 1 ? 'end' : 'middle';
+    return '<text x="' + f(X(i)) + '" y="156" text-anchor="' + anchor + '">' + esc(chartDate(data[i].tanggal)) + '</text>';
+  }).join('');
+
+  const totalIn = data.reduce((s, x) => s + num(x.masuk), 0);
+  const totalOut = data.reduce((s, x) => s + num(x.keluar), 0);
   const net = totalIn - totalOut;
-  const last = data[data.length - 1];
-  const lastDate = chartDate(last?.tanggal);
+  const k0 = n - 1;
+  const summary = (k) => '<b>' + esc(chartDate(data[k].tanggal)) + '</b><span class="positive">Masuk ' +
+    ringkasRp(data[k].masuk) + '</span><span>Keluar ' + ringkasRp(data[k].keluar) + '</span>';
 
   el.innerHTML =
-    '<svg class="chart-svg" viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="Arus kas harian">' +
-      '<defs>' +
-        '<linearGradient id="gm" x1="0" y1="0" x2="0" y2="1">' +
-          '<stop offset="0" stop-color="#168779" stop-opacity=".26"/>' +
-          '<stop offset="1" stop-color="#168779" stop-opacity="0"/>' +
-        '</linearGradient>' +
-        '<linearGradient id="gk" x1="0" y1="0" x2="0" y2="1">' +
-          '<stop offset="0" stop-color="#e49532" stop-opacity=".22"/>' +
-          '<stop offset="1" stop-color="#e49532" stop-opacity="0"/>' +
-        '</linearGradient>' +
-      '</defs>' +
+    '<svg class="chart-svg" viewBox="0 0 ' + W + ' ' + H + '" style="touch-action:pan-y;cursor:crosshair" role="img" ' +
+      'aria-label="Grafik arus kas harian: uang masuk dan uang keluar">' +
+      '<defs><linearGradient id="fm-gm" x1="0" y1="0" x2="0" y2="1">' +
+        '<stop offset="0" stop-color="#1e7b4f" stop-opacity=".30"/><stop offset="1" stop-color="#1e7b4f" stop-opacity="0"/>' +
+      '</linearGradient></defs>' +
       '<g class="chart-grid">' + grid + '</g>' +
-      '<path d="' + area('masuk') + '" fill="url(#gm)"/>' +
-      '<path d="' + area('keluar') + '" fill="url(#gk)"/>' +
-      '<path class="ln in" pathLength="1" d="' + path('masuk') + '"/>' +
-      '<path class="ln out" pathLength="1" d="' + path('keluar') + '"/>' +
+      '<path d="' + smooth('masuk') + ' L' + f(X(n - 1)) + ',' + BASE + ' L' + f(X(0)) + ',' + BASE + ' Z" fill="url(#fm-gm)"/>' +
+      '<path d="' + smooth('keluar') + '" fill="none" stroke="#363533" stroke-width="2" stroke-dasharray="5 5" stroke-linecap="round" stroke-linejoin="round"/>' +
+      '<path d="' + smooth('masuk') + '" fill="none" stroke="#1e7b4f" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>' +
       '<g class="chart-x">' + xlab + '</g>' +
-      '<line class="chart-focus" x1="' + X(n - 1).toFixed(1) + '" y1="18" x2="' + X(n - 1).toFixed(1) + '" y2="' + (H - PB) + '"/>' +
-      '<circle class="chart-focus-dot in" cx="' + X(n - 1).toFixed(1) + '" cy="' + Y(last.masuk).toFixed(1) + '" r="5"/>' +
-      '<circle class="chart-focus-dot out" cx="' + X(n - 1).toFixed(1) + '" cy="' + Y(last.keluar).toFixed(1) + '" r="5"/>' +
+      '<line class="chart-focus" y1="8" y2="' + BASE + '"/>' +
+      '<circle class="chart-focus-dot in" r="5"/><circle class="chart-focus-dot out" r="5"/>' +
     '</svg>' +
-    '<div class="chart-net"><span>Selisih bersih</span><b class="' + (net >= 0 ? 'positive' : 'negative') + '">' + (net >= 0 ? '+' : '−') + shortRp(Math.abs(net)) + '</b></div>' +
-    '<div class="chart-summary"><b>' + esc(lastDate) + '</b><span class="positive">Masuk ' + shortRp(last.masuk) + '</span><span>Keluar ' + shortRp(last.keluar) + '</span></div>';
+    '<div class="chart-net"><span>Selisih bersih</span><b class="' + (net >= 0 ? 'positive' : 'negative') + '">' +
+      (net >= 0 ? '+' : '−') + ringkasRp(Math.abs(net)) + '</b></div>' +
+    '<div class="chart-summary" aria-live="polite"></div>';
+
+  if (typeof el.querySelector !== 'function') return;
+  const svg = el.querySelector('svg'), box = el.querySelector('.chart-summary');
+  const focus = svg.querySelector('.chart-focus'), dIn = svg.querySelector('.chart-focus-dot.in'), dOut = svg.querySelector('.chart-focus-dot.out');
+  const setFocus = (k) => {
+    focus.setAttribute('x1', f(X(k))); focus.setAttribute('x2', f(X(k)));
+    dIn.setAttribute('cx', f(X(k))); dIn.setAttribute('cy', f(Y(data[k].masuk)));
+    dOut.setAttribute('cx', f(X(k))); dOut.setAttribute('cy', f(Y(data[k].keluar)));
+    box.innerHTML = summary(k);
+  };
+  const pick = (e) => {
+    const r = svg.getBoundingClientRect();
+    const vx = ((e.clientX - r.left) / r.width) * W;
+    setFocus(Math.max(0, Math.min(n - 1, Math.round((vx - L) / ((R - L) / Math.max(1, n - 1))))));
+  };
+  svg.addEventListener('pointerdown', pick);
+  svg.addEventListener('pointermove', (e) => { if (e.buttons) pick(e); });
+  setFocus(k0);
 }
 
-const DONUT_COLORS = ['#d03437', '#363533', '#e88986', '#aaa7a5', '#f3cccc', '#168779', '#7d8994'];
+const DONUT_COLORS = ['#d03437', '#363533', '#ee8f8b', '#a9a3a1', '#f4cfcd', '#1e7b4f', '#7d8994'];
 
 function drawDonut(el, legendEl, items, total) {
   if (!el) return;
@@ -533,23 +560,23 @@ function drawDonut(el, legendEl, items, total) {
     return;
   }
   const sum = items.reduce((a, b) => a + b.total, 0);
-  const R = 62, SW = 24, C = 2 * Math.PI * R;
+  const R = 42, SW = 16, C = 2 * Math.PI * R;
   let off = 0, segs = '', legend = '';
   items.forEach((it, i) => {
     const frac = sum > 0 ? it.total / sum : 0;
-    const len = frac * C;
+    const len = frac * C, seg = Math.max(len - 3, 0);
     const color = DONUT_COLORS[i % DONUT_COLORS.length];
-    segs += '<circle class="donut-seg" cx="90" cy="90" r="' + R + '" fill="none" stroke="' + color +
-      '" stroke-width="' + SW + '" stroke-dasharray="' + len.toFixed(2) + ' ' + (C - len).toFixed(2) +
-      '" stroke-dashoffset="' + (-off).toFixed(2) + '" transform="rotate(-90 90 90)"/>';
+    segs += '<circle class="donut-seg" cx="60" cy="60" r="' + R + '" fill="none" stroke="' + color +
+      '" stroke-width="' + SW + '" stroke-dasharray="' + seg.toFixed(2) + ' ' + (C - seg).toFixed(2) +
+      '" stroke-dashoffset="' + (-off).toFixed(2) + '" transform="rotate(-90 60 60)"/>';
     off += len;
     legend += '<div class="dl-row"><span class="dl-dot" style="background:' + color + '"></span>' +
       '<span class="dl-name">' + esc(it.nama) + '</span><b>' + Math.round(frac * 100) + '%</b></div>';
   });
-  el.innerHTML = '<svg class="donut-svg" viewBox="0 0 180 180" role="img" aria-label="Komposisi pemasukan per unit">' +
+  el.innerHTML = '<svg class="donut-svg" viewBox="0 0 120 120" role="img" aria-label="Komposisi pemasukan per unit layanan">' +
     segs +
-    '<text class="donut-total" x="90" y="87" text-anchor="middle">' + shortRp(sum) + '</text>' +
-    '<text class="donut-cap" x="90" y="108" text-anchor="middle">pemasukan</text>' +
+    '<text class="donut-total" x="60" y="58" text-anchor="middle">' + ringkasRp(sum) + '</text>' +
+    '<text class="donut-cap" x="60" y="74" text-anchor="middle">pemasukan</text>' +
   '</svg>';
   if (legendEl) legendEl.innerHTML = legend;
 }

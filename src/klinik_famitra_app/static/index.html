@@ -4,6 +4,9 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Klinik Fa-Mitra — Keuangan</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
@@ -174,18 +177,18 @@
       </div>
       <p class="page-date fm-hidden" id="dash-tanggal">—</p><button id="dash-refresh" class="fm-hidden" type="button">Refresh</button><div id="dash-todo" class="fm-hidden"></div><span id="todo-count" class="fm-hidden">0</span><div class="fm-date-range" id="dash-range-wrap"><input type="date" id="dash-dari" aria-label="Tanggal mulai"><span>–</span><input type="date" id="dash-sampai" aria-label="Tanggal akhir"></div>
       <div class="fm-summary-grid">
-        <article class="fm-stat"><div><span class="fm-stat-icon positive">↙</span>Pemasukan</div><b class="positive" id="card-masuk">—</b><small>Sudah diterima</small></article>
+        <article class="fm-stat"><div><span class="fm-stat-icon positive">↙</span>Pemasukan</div><b class="positive" id="card-masuk">—</b><small>sudah diterima</small></article>
         <article class="fm-stat"><div><span class="fm-stat-icon neutral">↗</span>Pengeluaran</div><b id="card-keluar">—</b><small id="sub-keluar">Transaksi keluar</small></article>
         <article class="fm-stat fm-stat-profit"><div><span class="fm-stat-icon brand">⌁</span>Laba akrual</div><b id="card-laba">—</b><small id="sub-laba">Termasuk piutang</small></article>
       </div>
-      <div class="fm-section-head"><h2>Arus kas 30 hari</h2><span class="fm-muted">Masuk & keluar</span></div>
-      <article class="fm-card fm-chart-card"><div class="fm-chart-legend"><span><i class="fm-line-in"></i>Masuk</span><span><i class="fm-line-out"></i>Keluar</span></div><div id="chart-tren" class="chart-box"><p class="empty-state">Grafik akan tampil setelah data dimuat.</p></div><p class="fm-chart-note">30 hari terakhir hingga tanggal akhir periode.</p></article>
+      <div class="fm-section-head"><h2>Arus kas 30 hari</h2></div>
+      <article class="fm-card fm-chart-card"><div class="fm-chart-legend"><span><i class="fm-line-in"></i>Masuk</span><span><i class="fm-line-out"></i>Keluar</span></div><div id="chart-tren" class="chart-box"><p class="empty-state">Grafik akan tampil setelah data dimuat.</p></div><p class="fm-chart-note fm-extra">30 hari terakhir hingga tanggal akhir periode.</p></article>
       <div class="fm-section-head"><h2>Sumber pemasukan</h2><span class="fm-muted">Bulan ini</span></div>
       <article class="fm-card fm-source-card"><div id="chart-donut" class="donut-box"><p class="empty-state">Menunggu data</p></div><div id="donut-legend" class="donut-legend"></div><div id="rekap-utama" class="bar-list fm-source-fallback"><p class="empty-state">Menunggu data</p></div><div id="rekap-unit" class="rekap hidden"><p class="empty-state">Menunggu data</p></div><div id="rekap-sumber" class="rekap hidden"><p class="empty-state">Menunggu data</p></div><div id="rekap-metode" class="rekap hidden"><p class="empty-state">Menunggu data</p></div></article>
-      <div class="fm-section-head"><h2>Pengeluaran per kategori</h2></div><article class="fm-card"><div id="rekap-kategori" class="bar-list"><p class="empty-state">Menunggu data</p></div></article>
-      <div class="fm-section-head"><h2>Transaksi terakhir</h2><button type="button" class="fm-text-link" onclick="switchView('transaksi')">Lihat semua ›</button></div><article class="fm-card"><ul id="dashboard-recent" class="tx-list"><li class="empty-state">Transaksi akan tampil setelah data dimuat.</li></ul></article>
-      <div class="fm-section-head"><h2>Piutang klinik</h2><button type="button" class="fm-text-link" onclick="switchView('tagihan')">Lihat tagihan ›</button></div><article class="fm-card fm-debt"><div class="fm-debt-row"><span class="fm-debt-icon">B</span><div><small>Piutang BPJS</small><b id="card-piutang">—</b></div><span class="fm-debt-caption">Klaim belum cair</span></div><div class="fm-debt-row"><span class="fm-debt-icon patient">P</span><div><small>Piutang pasien</small><b id="card-piutang-pasien">—</b></div><span class="fm-debt-caption">Tagihan belum lunas</span></div></article>
-      <p class="fm-footnote" id="dash-hint">Saldo tunai & rekening adalah saldo berjalan. Pemasukan/pengeluaran mengikuti periode.</p>
+      <div class="fm-section-head fm-extra"><h2>Pengeluaran per kategori</h2></div><article class="fm-card fm-extra"><div id="rekap-kategori" class="bar-list"><p class="empty-state">Menunggu data</p></div></article>
+      <div class="fm-section-head"><h2>Transaksi terakhir</h2><button type="button" class="fm-text-link" onclick="switchView('transaksi')"><span class="fm-only-desktop">Lihat semua ›</span><span class="fm-only-mobile">Catat baru</span></button></div><article class="fm-card"><ul id="dashboard-recent" class="tx-list"><li class="empty-state">Transaksi akan tampil setelah data dimuat.</li></ul></article>
+      <div class="fm-section-head fm-extra"><h2>Piutang klinik</h2><button type="button" class="fm-text-link" onclick="switchView('tagihan')">Lihat tagihan ›</button></div><article class="fm-card fm-debt fm-extra"><div class="fm-debt-row"><span class="fm-debt-icon">B</span><div><small>Piutang BPJS</small><b id="card-piutang">—</b></div><span class="fm-debt-caption">Klaim belum cair</span></div><div class="fm-debt-row"><span class="fm-debt-icon patient">P</span><div><small>Piutang pasien</small><b id="card-piutang-pasien">—</b></div><span class="fm-debt-caption">Tagihan belum lunas</span></div></article>
+      <p class="fm-footnote fm-extra" id="dash-hint">Saldo tunai & rekening adalah saldo berjalan. Pemasukan/pengeluaran mengikuti periode.</p>
     </div>
   </section>
 
@@ -540,10 +543,10 @@
 </main>
 
 <nav class="tabbar" aria-label="Navigasi seluler">
-  <button type="button" data-view="dashboard" class="active" aria-current="page"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m3 10 9-7 9 7v10H3Z M9 20v-7h6v7"/></svg><span>Beranda</span></button>
+  <button type="button" data-view="dashboard" class="active" aria-current="page"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11.5 12 4l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg><span>Beranda</span></button>
   <button type="button" data-view="tagihan"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h12v18l-3-2-3 2-3-2-3 2V3Z M9 8h6m-6 4h6"/></svg><span>Tagihan</span></button>
-  <button type="button" class="mobile-create" data-view="transaksi" aria-label="Catat transaksi"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg><span>Catat</span></button>
-  <button type="button" data-view="laporan"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 3v17h17M9 16v-5m5 5V7m5 9V4"/></svg><span>Laporan</span></button>
+  <button type="button" class="mobile-create" data-view="transaksi" aria-label="Catat transaksi"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M7 7h13M16 3l4 4-4 4M17 17H4M8 13l-4 4 4 4"/></svg><span>Catat</span></button>
+  <button type="button" data-view="laporan"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 20V11M12 20V4M19 20v-6M3 20h18"/></svg><span>Laporan</span></button>
   <button type="button" id="mobile-more-toggle" aria-controls="mobile-more" aria-expanded="false" aria-haspopup="dialog"><svg aria-hidden="true" viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg><span>Lainnya</span></button>
 </nav>
 <dialog id="mobile-more" class="mobile-more" aria-labelledby="mobile-more-title">

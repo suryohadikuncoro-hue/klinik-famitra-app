@@ -954,3 +954,72 @@ h3 { font-size: 14px; font-weight: 650; letter-spacing: -.15px; }
  .tabbar .mobile-create.active svg{background:var(--brand-dark)}
 }
 @media(min-width:768px){.fm-mobile-head{display:none}.fm-dashboard .fm-hero{max-width:100%}}
+
+/* === Penyesuaian dashboard agar identik dengan mockup (Fa-Mitra, mobile) === */
+.fm-dashboard,.fm-mobile-head,.tabbar{font-family:"Plus Jakarta Sans",Inter,"Segoe UI",system-ui,-apple-system,Roboto,sans-serif}
+.fm-dashboard button,.fm-mobile-head button{border:0}
+.fm-text-link{background:none}
+.fm-only-mobile{display:none}
+.fm-line-in,.fm-line-out{width:14px;height:3px;border-radius:2px}
+.fm-line-in{background:#1e7b4f}.fm-line-out{background:#363533;border-top:0}
+.fm-chart-legend{gap:14px}
+.fm-chart-card{padding:14px}
+.fm-chart-card .chart-box{padding-top:42px}
+.fm-chart-card .chart-grid line{stroke:#eae5e4;stroke-width:1}
+.fm-chart-card .chart-focus{stroke-dasharray:3 3}
+.fm-chart-card .chart-focus-dot.in{fill:#1e7b4f}
+.chart-net{right:14px;top:14px;align-items:flex-end;text-align:right}
+.chart-net b{font-size:19px;font-weight:800;line-height:1.2}
+.chart-summary{display:flex;justify-content:space-between;gap:8px;margin-top:8px;padding:10px 12px;border-radius:14px;background:#f3f1f0;font-size:12px;text-align:left}
+.chart-summary b{font-weight:700}
+.fm-source-card .donut-total{font-size:15px;font-weight:800;fill:#262322}
+.fm-source-card .donut-cap{font-size:10px;fill:#6e6766}
+@media(max-width:767px){
+ body:has(#view-dashboard.active){background:#f3f1f0}
+ body:has(#view-dashboard.active) main{padding:16px 16px 120px}
+ .fm-extra{display:none!important}
+ .fm-only-desktop{display:none}.fm-only-mobile{display:inline}
+ .fm-mobile-head{gap:12px}
+ .fm-mobile-head>img{width:44px;height:44px;object-fit:cover}
+ .fm-who small{font-size:12px}.fm-who b{font-size:16px;font-weight:700}
+ .fm-icon-btn{width:44px;height:44px}
+ .fm-icon-btn i{top:11px;right:12px;width:8px;height:8px}
+ .fm-hero-inner{padding:18px 18px 16px}
+ .fm-total{font-size:32px;font-weight:800;letter-spacing:-.02em;margin:10px 0 12px}
+ .fm-split{margin-bottom:6px}
+ .fm-balance{margin-bottom:14px}.fm-balance b{font-weight:400}
+ .fm-actions button{height:44px;font-size:13px;font-weight:600;gap:6px}
+ .fm-stamp{font-size:11px;letter-spacing:.04em;padding:10px 8px 6px}
+ .fm-dashboard .fm-section-head{margin:22px 4px 10px}
+ .fm-dashboard .fm-section-head h2{font-size:16px;font-weight:700;color:#262322}
+ .fm-stat{padding:14px}
+ .fm-stat>div{font-size:12px;gap:6px}
+ .fm-stat>b{font-size:17px;font-weight:800;margin:6px 0 0}
+ .fm-stat>small{font-size:11px}
+ /* donat: ikon di kiri, legenda di kanan */
+ .fm-dashboard .fm-source-card{display:flex;align-items:center;gap:18px;padding:14px;min-height:0}
+ .fm-dashboard .fm-source-card .donut-box{flex:none;min-height:0;padding:0}
+ .fm-dashboard .fm-source-card .donut-svg{width:120px;height:120px}
+ .fm-dashboard .fm-source-card .donut-legend{flex:1;min-width:0;padding:0;display:flex;flex-direction:column;gap:9px}
+ .fm-dashboard .fm-source-card .dl-row{display:flex;gap:8px;font-size:13px;color:var(--text)}
+ .fm-dashboard .fm-source-card .dl-dot{width:10px;height:10px;border-radius:3px}
+ .fm-dashboard .fm-source-card .dl-row b{margin-left:auto;font-size:13px}
+ /* baris transaksi */
+ .fm-dashboard .tx-row{grid-template-columns:40px minmax(0,1fr) auto;padding:12px 0}
+ .fm-dashboard .tx-row:first-child{padding-top:12px}
+ .fm-dashboard .tx-icon{width:40px;height:40px}
+ .fm-dashboard .tx-icon.in{background:#ddf3e7;color:#14683f}
+ .fm-dashboard .tx-icon.out{background:#ece9e8;color:#363533}
+ .fm-dashboard .tx-title{font-weight:600}
+ .fm-dashboard .tx-meta{font-size:12px}
+ .fm-dashboard .tx-amount{font-size:14px;font-weight:700}
+ .fm-dashboard .tx-amount.in{color:#14683f}
+ .fm-dashboard .tx-method{font-size:12px}
+ /* navigasi bawah: 4 tab (Beranda, Catat, Tagihan, Laporan); menu lain lewat ikon bel/gear */
+ .tabbar [data-view="dashboard"]{order:1}
+ .tabbar .mobile-create{order:2}
+ .tabbar [data-view="tagihan"]{order:3}
+ .tabbar [data-view="laporan"]{order:4}
+ .tabbar #mobile-more-toggle{display:none}
+ .tabbar .mobile-create svg,.tabbar .mobile-create.active svg{width:20px;height:20px;padding:0;margin:0;border:0;border-radius:0;background:none;box-shadow:none;color:inherit}
+}
