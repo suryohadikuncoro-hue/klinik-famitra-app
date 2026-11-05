@@ -898,11 +898,26 @@ h3 { font-size: 14px; font-weight: 650; letter-spacing: -.15px; }
  .fm-dashboard .fm-section-head{margin:20px 4px 10px;flex-wrap:wrap}
  .fm-dashboard .fm-section-head h2{font-size:15px}
  .fm-summary-grid{grid-template-columns:1fr 1fr}
- .fm-stat-profit{grid-column:1/-1}
+ .fm-stat-profit{display:none}
  .fm-dashboard .card{padding:14px;border-radius:22px}
  .fm-dashboard .dash-row{display:block}
  .fm-dashboard .page-head{display:none}
  .fm-dashboard .fm-date-range{margin-top:0}
  .fm-dashboard #chart-tren{min-height:170px}
+
+ /* Match the supplied mobile mockup: period is selected from the hero chip. */
+ .fm-dashboard > .fm-section-head:first-of-type{display:block;margin-top:22px}
+ .fm-dashboard > .fm-section-head:first-of-type .fm-period-toggle{display:none}
+
+ /* Floating dark action dock from the mockup. Inactive labels stay icon-only. */
+ .tabbar{display:flex;left:14px;right:14px;bottom:12px;max-width:402px;margin:0 auto;padding:6px;gap:2px;background:#363533;border:0;border-radius:32px;box-shadow:0 10px 30px rgba(40,15,15,.3)}
+ .tabbar button{display:flex;flex:1;align-items:center;justify-content:center;gap:6px;height:48px;min-height:48px;padding:0;border-radius:24px;color:#d6cfcd;background:transparent;font-size:13px}
+ .tabbar button span{display:none}
+ .tabbar button.active{flex:2.2;background:#fff;color:#0b0a0e}
+ .tabbar button.active span{display:inline}
+ .tabbar button.active::before{display:none}
+ .tabbar .mobile-create{background:transparent;color:#d6cfcd}
+ .tabbar .mobile-create svg{width:49px;height:49px;padding:13px;margin-top:-23px;border-radius:17px;background:var(--brand);color:#fff;box-shadow:0 5px 12px #d0343726;border:3px solid var(--bg)}
+ .tabbar .mobile-create.active svg{background:var(--brand-dark)}
 }
 @media(min-width:768px){.fm-mobile-head{display:none}.fm-dashboard .fm-hero{max-width:100%}}
