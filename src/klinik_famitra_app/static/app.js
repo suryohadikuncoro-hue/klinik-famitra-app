@@ -237,7 +237,9 @@ async function renderDashboard() {
 
   const dana = (Number(d.kas_tunai) || 0) + (Number(d.saldo_bank) || 0);
   setDashboardMoney('card-dana', dana);
-  $('dash-stamp').textContent = 'per ' + tanggalPendek(sampai || todayStr);
+  const now = new Date();
+  const hhmm = String(now.getHours()).padStart(2, '0') + '.' + String(now.getMinutes()).padStart(2, '0');
+  $('dash-stamp').textContent = tanggalPendek(sampai || todayStr).toUpperCase() + ' | DIPERBARUI ' + hhmm;
 
   // Porsi kas tunai vs rekening (dijaga tidak negatif)
   const kasPos = Math.max(0, Number(d.kas_tunai) || 0);
@@ -478,10 +480,22 @@ function drawArea(el, data) {
 
   const step = Math.max(1, Math.ceil(n / 6));
   let xlab = '';
+  const chartDate = (iso) => {
+    const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(iso || ''));
+    if (!m) return '—';
+    const dt = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
+    return dt.getDate() + ' ' + dt.toLocaleDateString('id-ID', { month: 'short' });
+  };
   for (let i = 0; i < n; i += step) {
     const t = data[i].tanggal;
-    xlab += '<text x="' + X(i).toFixed(1) + '" y="' + (H - 6) + '" text-anchor="middle">' + t.slice(8, 10) + '/' + t.slice(5, 7) + '</text>';
+    xlab += '<text x="' + X(i).toFixed(1) + '" y="' + (H - 6) + '" text-anchor="middle">' + esc(chartDate(t)) + '</text>';
   }
+
+  const totalIn = data.reduce((s, x) => s + (Number(x.masuk) || 0), 0);
+  const totalOut = data.reduce((s, x) => s + (Number(x.keluar) || 0), 0);
+  const net = totalIn - totalOut;
+  const last = data[data.length - 1];
+  const lastDate = chartDate(last?.tanggal);
 
   el.innerHTML =
     '<svg class="chart-svg" viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="Arus kas harian">' +
@@ -501,10 +515,15 @@ function drawArea(el, data) {
       '<path class="ln in" pathLength="1" d="' + path('masuk') + '"/>' +
       '<path class="ln out" pathLength="1" d="' + path('keluar') + '"/>' +
       '<g class="chart-x">' + xlab + '</g>' +
-    '</svg>';
+      '<line class="chart-focus" x1="' + X(n - 1).toFixed(1) + '" y1="18" x2="' + X(n - 1).toFixed(1) + '" y2="' + (H - PB) + '"/>' +
+      '<circle class="chart-focus-dot in" cx="' + X(n - 1).toFixed(1) + '" cy="' + Y(last.masuk).toFixed(1) + '" r="5"/>' +
+      '<circle class="chart-focus-dot out" cx="' + X(n - 1).toFixed(1) + '" cy="' + Y(last.keluar).toFixed(1) + '" r="5"/>' +
+    '</svg>' +
+    '<div class="chart-net"><span>Selisih bersih</span><b class="' + (net >= 0 ? 'positive' : 'negative') + '">' + (net >= 0 ? '+' : '−') + shortRp(Math.abs(net)) + '</b></div>' +
+    '<div class="chart-summary"><b>' + esc(lastDate) + '</b><span class="positive">Masuk ' + shortRp(last.masuk) + '</span><span>Keluar ' + shortRp(last.keluar) + '</span></div>';
 }
 
-const DONUT_COLORS = ['#168779', '#4d83c6', '#e49532', '#8b6bb1', '#d03437', '#58a5b3', '#7d8994'];
+const DONUT_COLORS = ['#d03437', '#363533', '#e88986', '#aaa7a5', '#f3cccc', '#168779', '#7d8994'];
 
 function drawDonut(el, legendEl, items, total) {
   if (!el) return;
@@ -530,7 +549,7 @@ function drawDonut(el, legendEl, items, total) {
   el.innerHTML = '<svg class="donut-svg" viewBox="0 0 180 180" role="img" aria-label="Komposisi pemasukan per unit">' +
     segs +
     '<text class="donut-total" x="90" y="87" text-anchor="middle">' + shortRp(sum) + '</text>' +
-    '<text class="donut-cap" x="90" y="102" text-anchor="middle">TOTAL</text>' +
+    '<text class="donut-cap" x="90" y="108" text-anchor="middle">pemasukan</text>' +
   '</svg>';
   if (legendEl) legendEl.innerHTML = legend;
 }
